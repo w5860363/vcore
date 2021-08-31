@@ -193,8 +193,8 @@ class MovementInfo
 
         struct JumpInfo
         {
-            JumpInfo() : velocity(0.f), sinAngle(0.f), cosAngle(0.f), xyspeed(0.f), startClientTime(0) {}
-            float   velocity, sinAngle, cosAngle, xyspeed;
+            JumpInfo() : zspeed(0.f), sinAngle(0.f), cosAngle(0.f), xyspeed(0.f), startClientTime(0) {}
+            float   zspeed, sinAngle, cosAngle, xyspeed;
             Position start;
             uint32 startClientTime;
         };
@@ -611,7 +611,12 @@ class WorldObject : public Object
                 WorldObject* const m_obj;
         };
 
-		~WorldObject() override;
+        virtual ~WorldObject () override {
+#ifdef ENABLE_ELUNA
+			delete elunaEvents;
+			elunaEvents = NULL;
+#endif /* ENABLE_ELUNA */
+		}
 
         virtual void Update(uint32 /*update_diff*/, uint32 /*time_diff*/);
 
@@ -740,10 +745,7 @@ class WorldObject : public Object
         float GetAngle(float const x, float const y) const;
         bool HasInArc(WorldObject const* target, float const arcangle = M_PI, float offset = 0.0f) const;
         bool HasInArc(float const arcangle, float const x, float const y) const;
-        bool isInFrontInMap(WorldObject const* target,float distance, float arc = M_PI) const;
-        bool isInBackInMap(WorldObject const* target, float distance, float arc = M_PI) const;
-        bool isInFront(WorldObject const* target,float distance, float arc = M_PI) const;
-        bool isInBack(WorldObject const* target, float distance, float arc = M_PI) const;
+        bool IsFacingTarget(WorldObject const* target) const;
 
         bool CanReachWithMeleeSpellAttack(WorldObject const* pVictim, float flat_mod = 0.0f) const;
         float GetLeewayBonusRange(Unit const* target, bool ability) const;
@@ -878,6 +880,10 @@ class WorldObject : public Object
         void GetGameObjectListWithEntryInGrid(std::list<GameObject*>& lList, uint32 uiEntry, float fMaxSearchRange) const;
         void GetCreatureListWithEntryInGrid(std::list<Creature*>& lList, uint32 uiEntry, float fMaxSearchRange) const;
         void GetAlivePlayerListInRange(WorldObject const* pSource, std::list<Player*>& lList, float fMaxSearchRange) const;
+
+        // Script helpers.
+        uint32 DespawnNearCreaturesByEntry(uint32 entry, float range);
+        uint32 RespawnNearCreaturesByEntry(uint32 entry, float range);
 
         bool isActiveObject() const { return m_isActiveObject || m_viewPoint.hasViewers(); }
         void SetActiveObjectState(bool on);

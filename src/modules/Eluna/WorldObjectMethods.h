@@ -1097,6 +1097,8 @@ namespace LuaWorldObject
 
 #ifdef MANGOS
         Eluna::Push(L, obj->IsInFront(target, arc));
+#elif VMANGOS
+        Eluna::Push(L, obj->IsWithinDist(target, arc) && obj->HasInArc(target, M_PI));
 #else
         Eluna::Push(L, obj->isInFront(target, arc));
 #endif
@@ -1117,6 +1119,8 @@ namespace LuaWorldObject
 
 #ifdef MANGOS
         Eluna::Push(L, obj->IsInBack(target, arc));
+#elif VMANGOS
+        Eluna::Push(L, obj->IsWithinDist(target, arc) && !obj->HasInArc(target, M_PI));
 #else
         Eluna::Push(L, obj->isInBack(target, arc));
 #endif

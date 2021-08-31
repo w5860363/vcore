@@ -166,6 +166,9 @@ void GameObject::RemoveFromWorld()
 #ifdef ENABLE_ELUNA
         sEluna->OnRemoveFromWorld(this);
 #endif /* ENABLE_ELUNA */
+        if (AI())
+            AI()->OnRemoveFromWorld();
+
         if (m_zoneScript)
             m_zoneScript->OnGameObjectRemove(this);
 
@@ -244,9 +247,6 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map* map, float x, float
     SetUInt32Value(GAMEOBJECT_FACTION, goinfo->faction);
     SetUInt32Value(GAMEOBJECT_FLAGS, goinfo->flags);
 
-    if (goinfo->type == GAMEOBJECT_TYPE_TRANSPORT)
-        SetFlag(GAMEOBJECT_FLAGS, (GO_FLAG_TRANSPORT | GO_FLAG_NODESPAWN));
-
     SetEntry(goinfo->id);
     SetDisplayId(goinfo->displayId);
 
@@ -255,13 +255,12 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map* map, float x, float
 
     SetGoAnimProgress(animprogress);
 
-    switch (GetGoType())
+    if (goinfo->type == GAMEOBJECT_TYPE_TRANSPORT)
     {
-        case GAMEOBJECT_TYPE_TRANSPORT:
-            SetUInt32Value(GAMEOBJECT_LEVEL, goinfo->transport.pause);
-            SetGoState(goinfo->transport.startOpen ? GO_STATE_ACTIVE : GO_STATE_READY);
-            SetGoAnimProgress(animprogress);
-            break;
+        m_updateFlag |= UPDATEFLAG_TRANSPORT;
+        SetUInt32Value(GAMEOBJECT_LEVEL, goinfo->transport.pause);
+        SetGoState(goinfo->transport.startOpen ? GO_STATE_ACTIVE : GO_STATE_READY);
+        SetFlag(GAMEOBJECT_FLAGS, (GO_FLAG_TRANSPORT | GO_FLAG_NODESPAWN));
     }
 
     SetName(goinfo->name);
@@ -630,7 +629,7 @@ void GameObject::Update(uint32 update_diff, uint32 /*p_time*/)
                 //any return here in case battleground traps
             }
 
-            if (GetOwnerGuid())
+            if (GetOwnerGuid() || (!m_spawnedByDefault && !GetGOData()))
             {
                 if (Unit* owner = GetOwner())
                     owner->RemoveGameObject(this, false);
@@ -1080,7 +1079,7 @@ bool GameObject::IsTransport() const
     // If something is marked as a transport, don't transmit an out of range packet for it.
     GameObjectInfo const* gInfo = GetGOInfo();
     if (!gInfo) return false;
-    return gInfo->type == GAMEOBJECT_TYPE_TRANSPORT || gInfo->type == GAMEOBJECT_TYPE_MO_TRANSPORT;
+    return gInfo->IsTransport();
 }
 
 bool GameObject::IsMoTransport() const

@@ -407,8 +407,15 @@ void Spell::FillTargetMap()
 
         // TODO: find a way so this is not needed?
         // for area auras always add caster as target (needed for totems for example)
-        if (IsAreaAuraEffect(m_spellInfo->Effect[i]) && m_casterUnit)
+        if (m_casterUnit && IsAreaAuraEffect(m_spellInfo->Effect[i]))
             AddUnitTarget(m_casterUnit, SpellEffectIndex(i));
+
+#if SUPPORTED_CLIENT_BUILD <= CLIENT_BUILD_1_11_2
+        // Pre 1.12 most of the quest complete spells don't have correct target set.
+        if (m_casterUnit && m_spellInfo->Effect[i] == SPELL_EFFECT_QUEST_COMPLETE)
+            AddUnitTarget(m_casterUnit, SpellEffectIndex(i));
+#endif
+
         // If same target already filled, use it
         // Example: AoE fear has effects speedup and modfear, with maxtargets = 1
         // We dont want to apply speedup to the first, fear to the second.
@@ -756,22 +763,24 @@ void Spell::prepareDataForTriggerSystem()
     switch (m_spellInfo->DmgClass)
     {
         case SPELL_DAMAGE_CLASS_MELEE:
-            m_procAttacker = PROC_FLAG_SUCCESSFUL_MELEE_SPELL_HIT;
-            if (m_attackType == OFF_ATTACK)
-                m_procAttacker |= PROC_FLAG_SUCCESSFUL_OFFHAND_HIT;
-            m_procVictim   = PROC_FLAG_TAKEN_MELEE_SPELL_HIT;
+            m_procAttacker = PROC_FLAG_DEAL_MELEE_ABILITY;
+            if (m_attackType == BASE_ATTACK)
+                m_procAttacker |= PROC_FLAG_MAIN_HAND_WEAPON_SWING;
+            else if (m_attackType == OFF_ATTACK)
+                m_procAttacker |= PROC_FLAG_OFF_HAND_WEAPON_SWING;
+            m_procVictim   = PROC_FLAG_TAKE_MELEE_ABILITY;
             if (m_spellInfo->IsNextMeleeSwingSpell())
             {
-                m_procAttacker |= PROC_FLAG_SUCCESSFUL_MELEE_HIT;
-                m_procVictim |= PROC_FLAG_TAKEN_MELEE_HIT;
+                m_procAttacker |= PROC_FLAG_DEAL_MELEE_SWING;
+                m_procVictim |= PROC_FLAG_TAKE_MELEE_SWING;
             }
             break;
         case SPELL_DAMAGE_CLASS_RANGED:
             // Auto attack
             if (m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_AUTOREPEAT_FLAG)
             {
-                m_procAttacker = PROC_FLAG_SUCCESSFUL_RANGED_HIT;
-                m_procVictim   = PROC_FLAG_TAKEN_RANGED_HIT;
+                m_procAttacker = PROC_FLAG_DEAL_RANGED_ATTACK;
+                m_procVictim   = PROC_FLAG_TAKE_RANGED_ATTACK;
             }
             else // Ranged spell attack
             {
@@ -782,8 +791,8 @@ void Spell::prepareDataForTriggerSystem()
                     m_procVictim = PROC_FLAG_NONE;
                 }
                 else {
-                    m_procAttacker = PROC_FLAG_SUCCESSFUL_RANGED_SPELL_HIT;
-                    m_procVictim   = PROC_FLAG_TAKEN_RANGED_SPELL_HIT;
+                    m_procAttacker = PROC_FLAG_DEAL_RANGED_ABILITY;
+                    m_procVictim   = PROC_FLAG_TAKE_RANGED_ABILITY;
                 }
 
                 if (m_spellInfo->IsAreaOfEffectSpell())
@@ -800,19 +809,19 @@ void Spell::prepareDataForTriggerSystem()
                 aoe = true;
 
             // Check for positive spell. 'Positive' spells include various things such as buffs, but
-            // they shouldn't proc with PROC_FLAG_SUCCESSFUL_POSITIVE_SPELL. Note that some spells
+            // they shouldn't proc with PROC_FLAG_DEAL_HELPFUL_SPELL. Note that some spells
             // with SPELL_EFFECT_DISPEL are negative, such as Purge.
             if (positive)
             {
                 if (m_spellInfo->IsHealSpell())
                 {
-                    m_procAttacker = PROC_FLAG_SUCCESSFUL_POSITIVE_SPELL;
-                    m_procVictim = PROC_FLAG_TAKEN_POSITIVE_SPELL;
+                    m_procAttacker = PROC_FLAG_DEAL_HELPFUL_SPELL;
+                    m_procVictim = PROC_FLAG_TAKE_HELPFUL_SPELL;
                 }
                 else
                 {
-                    m_procAttacker = PROC_FLAG_SUCCESSFUL_NONE_POSITIVE_SPELL;
-                    m_procVictim = PROC_FLAG_TAKEN_NONE_POSITIVE_SPELL;
+                    m_procAttacker = PROC_FLAG_DEAL_HELPFUL_ABILITY;
+                    m_procVictim = PROC_FLAG_TAKE_HELPFUL_ABILITY;
                 }
 
                 if (m_spellInfo->IsDispel())
@@ -838,20 +847,20 @@ void Spell::prepareDataForTriggerSystem()
             // Wands auto attack
             else if (m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_AUTOREPEAT_FLAG)
             {
-                m_procAttacker = PROC_FLAG_SUCCESSFUL_RANGED_HIT;
-                m_procVictim   = PROC_FLAG_TAKEN_RANGED_HIT;
+                m_procAttacker = PROC_FLAG_DEAL_RANGED_ATTACK;
+                m_procVictim   = PROC_FLAG_TAKE_RANGED_ATTACK;
             }
             else                                           // Negative spell
             {
                 if (m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MAGIC)
                 {
-                    m_procAttacker = PROC_FLAG_SUCCESSFUL_NEGATIVE_SPELL_HIT;
-                    m_procVictim = PROC_FLAG_TAKEN_NEGATIVE_SPELL_HIT;
+                    m_procAttacker = PROC_FLAG_DEAL_HARMFUL_SPELL;
+                    m_procVictim = PROC_FLAG_TAKE_HARMFUL_SPELL;
                 }
                 else
                 {
-                    m_procAttacker = PROC_FLAG_SUCCESSFUL_NONE_SPELL_HIT;
-                    m_procVictim = PROC_FLAG_TAKEN_NONE_SPELL_HIT;
+                    m_procAttacker = PROC_FLAG_DEAL_HARMFUL_ABILITY;
+                    m_procVictim = PROC_FLAG_TAKE_HARMFUL_ABILITY;
                 }
 
                 if (aoe)
@@ -1159,9 +1168,9 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
         // multiple targets, but not proc additional melee-only beneficial auras on the 
         // attacker like Sweeping Strikes. Leave the victim proc flags responding to a melee
         // spell.
-        if (procAttacker & PROC_FLAG_SUCCESSFUL_MELEE_SPELL_HIT) {
-            procAttacker &= ~(PROC_FLAG_SUCCESSFUL_MELEE_SPELL_HIT);
-            procAttacker |= PROC_FLAG_SUCCESSFUL_NEGATIVE_SPELL_HIT;
+        if (procAttacker & PROC_FLAG_DEAL_MELEE_ABILITY) {
+            procAttacker &= ~(PROC_FLAG_DEAL_MELEE_ABILITY);
+            procAttacker |= PROC_FLAG_DEAL_HARMFUL_SPELL;
         }
         else if (procAttacker & (PROC_FLAG_SUCCESSFUL_SPELL_CAST | PROC_FLAG_SUCCESSFUL_MANA_SPELL_CAST)) {
             // Secondary target on a successful spell cast. Remove these flags so we're not
@@ -1169,13 +1178,13 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
             // chain lightning + clearcasting. Leave positive effects
             // eg. Chain heal/lightning & Zandalarian Hero Charm
             procAttacker &= ~(PROC_FLAG_SUCCESSFUL_SPELL_CAST | PROC_FLAG_SUCCESSFUL_MANA_SPELL_CAST | 
-                              PROC_FLAG_SUCCESSFUL_NEGATIVE_SPELL_HIT);
+                              PROC_FLAG_DEAL_HARMFUL_SPELL);
         }
-        else if (procAttacker & (PROC_FLAG_SUCCESSFUL_AOE | PROC_FLAG_SUCCESSFUL_NEGATIVE_SPELL_HIT)) {
+        else if (procAttacker & (PROC_FLAG_SUCCESSFUL_AOE | PROC_FLAG_DEAL_HARMFUL_SPELL)) {
             // Do not allow secondary hits for negative aoe spells (such as Arcane Explosion) 
             // to proc beneficial abilities such as Clearcasting. Positive aoe spells can
             // still trigger, as in the case of prayer of healing and inspiration...
-            procAttacker &= ~(PROC_FLAG_SUCCESSFUL_AOE | PROC_FLAG_SUCCESSFUL_NEGATIVE_SPELL_HIT);
+            procAttacker &= ~(PROC_FLAG_SUCCESSFUL_AOE | PROC_FLAG_DEAL_HARMFUL_SPELL);
         }
     }
 
@@ -1219,7 +1228,9 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
             {
                 if (!m_spellInfo->IsPositiveSpell() && (m_caster->IsVisibleForOrDetect(unit, unit, false) || m_spellInfo->HasAttribute(SPELL_ATTR_EX_IS_PICKPOCKET)))
                 {
-                    bool combat = (m_spellInfo->Id != 3600) && !m_spellInfo->HasAttribute(SPELL_ATTR_EX3_NO_INITIAL_AGGRO);
+                    bool combat = !IsTriggeredByAura() &&
+                                  !m_spellInfo->HasAttribute(SPELL_ATTR_EX_NO_THREAT) &&
+                                  !m_spellInfo->HasAttribute(SPELL_ATTR_EX3_NO_INITIAL_AGGRO);
 
                     // Pickpocket can cause back attack if failed
                     if (m_spellInfo->HasAttribute(SPELL_ATTR_EX_IS_PICKPOCKET))
@@ -1273,6 +1284,11 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
             }
         }
     }
+
+    // All weapon based abilities can trigger weapon procs,
+    // even if they do no damage, or break on damage, like Sap.
+    // https://www.youtube.com/watch?v=klMsyF_Kz5o
+    bool triggerWeaponProcs = m_casterUnit != unitTarget && m_spellInfo->EquippedItemClass == ITEM_CLASS_WEAPON;
 
     // All calculated do it!
     // Do healing and triggers
@@ -1407,44 +1423,38 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
         if ((m_spellInfo->IsFitToFamilyMask<CF_PALADIN_JUDGEMENT_OF_RIGHTEOUSNESS>() && m_spellInfo->SpellIconID == 25) || 
             (m_spellInfo->SpellFamilyName == SPELLFAMILY_PALADIN && m_spellInfo->SpellIconID == 561 && m_spellInfo->SpellVisual == 0))
         {
-            procAttacker = PROC_FLAG_SUCCESSFUL_MELEE_SPELL_HIT;
-            procVictim = PROC_FLAG_TAKEN_MELEE_SPELL_HIT | PROC_FLAG_TAKEN_ANY_DAMAGE;
+            procAttacker = PROC_FLAG_DEAL_MELEE_ABILITY;
+            procVictim = PROC_FLAG_TAKE_MELEE_ABILITY | PROC_FLAG_TAKEN_ANY_DAMAGE;
         }
         // Do triggers for unit (reflect triggers passed on hit phase for correct drop charge)
         if (m_canTrigger)
             pCaster->ProcDamageAndSpell(ProcSystemArguments(unitTarget, pRealCaster ? procAttacker : PROC_FLAG_NONE, procVictim, procEx, damageInfo.damage, m_attackType, m_spellInfo, this));
         
-        if (m_caster->IsPlayer())
+        if (!triggerWeaponProcs && m_caster->IsPlayer())
         {
-            // trigger weapon enchants for weapon based spells; exclude spells that stop attack, because may break CC
-            if (m_spellInfo->EquippedItemClass == ITEM_CLASS_WEAPON && !(m_spellInfo->Attributes & SPELL_ATTR_STOP_ATTACK_TARGET))
-                ((Player*)m_caster)->CastItemCombatSpell(unitTarget, m_attackType);
-
             // trigger mainhand weapon procs for shield attacks (Shield Bash, Shield Slam) NOTE: vanilla only mechanic, patched out in 2.0.1
-            else if (m_spellInfo->EquippedItemClass == ITEM_CLASS_ARMOR && m_spellInfo->EquippedItemSubClassMask & (1 << ITEM_SUBCLASS_ARMOR_SHIELD)
+            if (m_spellInfo->EquippedItemClass == ITEM_CLASS_ARMOR && m_spellInfo->EquippedItemSubClassMask & (1 << ITEM_SUBCLASS_ARMOR_SHIELD)
                 && (m_spellInfo->SpellIconID == 280 || m_spellInfo->SpellIconID == 413))
-                ((Player*)m_caster)->CastItemCombatSpell(unitTarget, BASE_ATTACK);
+                triggerWeaponProcs = true;
 
             // Bloodthirt triggers main hand despite not requiring weapon
             // Execute damage component triggers main hand
             else if ((m_spellInfo->SpellIconID == 38 && m_spellInfo->SpellVisual == 372) || //bloodthirst
                     m_spellInfo->Id == 20647) //execute (damage dealing component does not require weapon)
             {
-                 ((Player*)m_caster)->CastItemCombatSpell(unitTarget, BASE_ATTACK);
+                triggerWeaponProcs = true;
             }
 
             // special Paladin cases - trigger weapon procs despite not having EquippedItemClass
             else if (m_spellInfo->SpellFamilyName == SPELLFAMILY_PALADIN)
             {
                 // Seal of Command
-                if (m_spellInfo->Id == 20424)
-                    ((Player*)m_caster)->CastItemCombatSpell(unitTarget, BASE_ATTACK);
+                if ((m_spellInfo->Id == 20424) ||
                 // Judgement of Command
-                else if (m_spellInfo->SpellIconID == 561)
-                    ((Player*)m_caster)->CastItemCombatSpell(unitTarget, BASE_ATTACK);
+                    (m_spellInfo->SpellIconID == 561) ||
                 // Judgement of Righteousness
-                else if (m_spellInfo->IsFitToFamilyMask<CF_PALADIN_JUDGEMENT_OF_RIGHTEOUSNESS>() && m_spellInfo->SpellIconID == 25)
-                    ((Player*)m_caster)->CastItemCombatSpell(unitTarget, BASE_ATTACK);
+                    (m_spellInfo->IsFitToFamilyMask<CF_PALADIN_JUDGEMENT_OF_RIGHTEOUSNESS>() && m_spellInfo->SpellIconID == 25))
+                    triggerWeaponProcs = true;
             }
         }
 
@@ -1493,9 +1503,6 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
                 }
             }
         }
-        // Sunder Armor triggers weapon proc as well as normal procs despite dealing no damage
-        if (m_caster->IsPlayer() && m_spellInfo->IsFitToFamily<SPELLFAMILY_WARRIOR, CF_WARRIOR_SUNDER_ARMOR>() && missInfo == SPELL_MISS_NONE)
-            ((Player*)m_caster)->CastItemCombatSpell(unitTarget, BASE_ATTACK);
 
         // Fill base damage struct (unitTarget - is real spell target)
         SpellNonMeleeDamage damageInfo(pCaster, unitTarget, m_spellInfo->Id, GetFirstSchoolInMask(m_spellSchoolMask));
@@ -1518,16 +1525,19 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
             // Override proc flags for offensive dispel
             if (pCaster->IsHostileTo(unitTarget))
             {
-                procAttacker &= ~(PROC_FLAG_SUCCESSFUL_NONE_POSITIVE_SPELL | PROC_FLAG_SUCCESSFUL_CURE_SPELL_CAST);
-                procAttacker |= PROC_FLAG_SUCCESSFUL_NEGATIVE_SPELL_HIT;
+                procAttacker &= ~(PROC_FLAG_DEAL_HELPFUL_ABILITY | PROC_FLAG_SUCCESSFUL_CURE_SPELL_CAST);
+                procAttacker |= PROC_FLAG_DEAL_HARMFUL_SPELL;
 
-                procVictim &= ~PROC_FLAG_TAKEN_NONE_POSITIVE_SPELL;
-                procVictim |= PROC_FLAG_TAKEN_NEGATIVE_SPELL_HIT;
+                procVictim &= ~PROC_FLAG_TAKE_HELPFUL_ABILITY;
+                procVictim |= PROC_FLAG_TAKE_HARMFUL_SPELL;
             }
         }
 
         pCaster->ProcDamageAndSpell(ProcSystemArguments(unitTarget, pRealCaster ? procAttacker : PROC_FLAG_NONE, procVictim, procEx, dmg, m_attackType, m_spellInfo, this));
     }
+
+    if (triggerWeaponProcs && m_caster->IsPlayer())
+        ((Player*)m_caster)->CastItemCombatSpell(unitTarget, m_spellInfo->EquippedItemClass == ITEM_CLASS_WEAPON ? m_attackType : BASE_ATTACK);
 
     if (missInfo != SPELL_MISS_NONE)
         return;
@@ -1555,9 +1565,9 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
     // World of Warcraft Client Patch 1.8.0 (2005-10-11)
     // - Pets no longer break off attacks when their target is affected by Warlock Fear.
 #if SUPPORTED_CLIENT_BUILD <= CLIENT_BUILD_1_7_1
-    if (((m_spellInfo->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DAMAGE) || m_spellInfo->HasAura(SPELL_AURA_MOD_FEAR)) &&
+    if ((m_spellInfo->HasAuraInterruptFlag(AURA_INTERRUPT_DAMAGE_CANCELS) || m_spellInfo->HasAura(SPELL_AURA_MOD_FEAR)) &&
 #else
-    if ((m_spellInfo->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DAMAGE) &&
+    if (m_spellInfo->HasAuraInterruptFlag(AURA_INTERRUPT_DAMAGE_CANCELS) &&
 #endif
         m_casterUnit && unit->HasAuraPetShouldAvoidBreaking(m_casterUnit))
     {
@@ -1625,7 +1635,7 @@ void Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask)
         if (!pRealCaster->IsFriendlyTo(unit))
         {
             if (m_damage) // Example: stealth.
-                unit->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_HITBYSPELL);
+                unit->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_HOSTILE_ACTION_RECEIVED_CANCELS);
 
             // not break stealth by cast targeting
             if (!(m_spellInfo->AttributesEx & SPELL_ATTR_EX_NOT_BREAK_STEALTH))
@@ -1649,7 +1659,9 @@ void Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask)
                     (m_spellInfo->Id == 6358 || // Exception to fix succubus seduction.
                      m_caster->IsVisibleForOrDetect(unit, unit, false)))
             {
-                if (!m_spellInfo->HasAttribute(SPELL_ATTR_EX3_NO_INITIAL_AGGRO) && !IsTriggeredByAura())
+                if (!IsTriggeredByAura() &&
+                    !m_spellInfo->HasAttribute(SPELL_ATTR_EX_NO_THREAT) &&
+                    !m_spellInfo->HasAttribute(SPELL_ATTR_EX3_NO_INITIAL_AGGRO))
                 {
                     // use speedup check to avoid re-remove after above lines
                     if (m_spellInfo->AttributesEx & SPELL_ATTR_EX_NOT_BREAK_STEALTH)
@@ -1731,16 +1743,16 @@ void Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask)
     if (pRealUnitCaster)
         DEBUG_UNIT(pRealUnitCaster, DEBUG_DR, "[%u] Groupe DR : %u. Niveau : %u.", m_spellInfo->Id, m_diminishGroup, m_diminishLevel);
 
-    // Increase Diminishing on unit, current informations for actually casts will use values above
-    if ((GetDiminishingReturnsGroupType(m_diminishGroup) == DRTYPE_PLAYER && unit->IsPlayer()) ||
-            GetDiminishingReturnsGroupType(m_diminishGroup) == DRTYPE_ALL)
-        unit->IncrDiminishing(m_diminishGroup);
-
     // Apply additional spell effects to target
     CastPreCastSpells(unit);
 
     if (m_spellInfo->IsSpellAppliesAura(effectMask))
     {
+        // Increase Diminishing on unit, current informations for actually casts will use values above
+        if ((GetDiminishingReturnsGroupType(m_diminishGroup) == DRTYPE_PLAYER && unit->IsPlayer()) ||
+            GetDiminishingReturnsGroupType(m_diminishGroup) == DRTYPE_ALL)
+            unit->IncrDiminishing(m_diminishGroup);
+
         m_spellAuraHolder = CreateSpellAuraHolder(m_spellInfo, unit, pRealUnitCaster ? pRealUnitCaster : unit, m_caster, m_CastItem);
         m_spellAuraHolder->SetTriggered(IsTriggered());
         m_spellAuraHolder->setDiminishGroup(m_diminishGroup);
@@ -1885,7 +1897,8 @@ void Spell::HandleDelayedSpellLaunch(TargetInfo *target)
     SpellNonMeleeDamage damageInfo(pCaster, unitTarget, m_spellInfo->Id, GetFirstSchoolInMask(m_spellSchoolMask));
 
     if (unit && !pCaster->IsFriendlyTo(unit))
-        unit->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_HITBYSPELL);
+        unit->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_HOSTILE_ACTION_RECEIVED_CANCELS);
+
     if (missInfo == SPELL_MISS_NONE || (missInfo == SPELL_MISS_REFLECT && target->reflectResult == SPELL_MISS_NONE))
     {
         // we need index of damage dealing effect for CalculateSpellDamage to use right bonus coefficient
@@ -2403,7 +2416,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
         }
         case TARGET_ENUM_UNITS_ENEMY_AOE_AT_SRC_LOC:
         {
-            FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
+            FillAreaTargets(targetUnitMap, radius, PUSH_SRC_CENTER, SPELL_TARGETS_AOE_DAMAGE);
             float minDist = -1;
 
 #if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_8_4
@@ -2446,7 +2459,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
 
             // fill real target list if no spell script target defined
             FillAreaTargets(bounds.first != bounds.second ? tempTargetUnitMap : targetUnitMap,
-                            radius, PUSH_DEST_CENTER, SPELL_TARGETS_ALL);
+                            radius, PUSH_SRC_CENTER, SPELL_TARGETS_ALL);
 
             if (!tempTargetUnitMap.empty())
             {
@@ -2633,7 +2646,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             break;
         case TARGET_ENUM_UNITS_FRIEND_AOE_AT_SRC_LOC:
             // selected friendly units (for casting objects) around casting object
-            FillAreaTargets(targetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_FRIENDLY, GetCastingObject());
+            FillAreaTargets(targetUnitMap, radius, PUSH_SRC_CENTER, SPELL_TARGETS_FRIENDLY, GetCastingObject());
             break;
         case TARGET_ENUM_UNITS_FRIEND_AOE_AT_DEST_LOC:
             FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_FRIENDLY);
@@ -3520,23 +3533,20 @@ SpellCastResult Spell::prepare(Aura* triggeredByAura, uint32 chance)
         // set timer base at cast time
         ReSetTimer();
 
-        // If timer = 0, it's an instant cast spell and will be casted on the next tick.
-        // Cast completion will remove all any stealth/invis auras
-        if (m_timer)
+        if (!m_IsTriggeredSpell && m_casterUnit)
         {
+            m_casterUnit->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_ACTION_CANCELS, m_spellInfo->Id, false, !ShouldRemoveStealthAuras());
+
             // World of Warcraft Client Patch 1.10.0 (2006-03-28)
             // - Stealth and Invisibility effects will now be canceled at the
             //   beginning of an action(spellcast, ability use etc...), rather than
             //   at the completion of the action.
 #if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_9_4
-            RemoveStealthAuras();
+            // If timer = 0, it's an instant cast spell and will be casted on the next tick.
+            // Cast completion will remove all any stealth/invis auras
+            if (m_timer)
+                m_casterUnit->RemoveSpellsCausingAura(SPELL_AURA_MOD_INVISIBILITY);
 #endif
-            
-            // If using a game object we need to remove any remaining invis auras. Should only
-            // ever be Gnomish Cloaking Device, since it's a special case and not removed on
-            // opcode receive
-            if (m_caster->IsPlayer() && m_targets.getGOTarget())
-                m_casterUnit->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ON_CAST_SPELL);
         }
 
         OnSpellLaunch();
@@ -3867,8 +3877,8 @@ void Spell::cast(bool skipCheck)
     SendSpellCooldown();
 
     // Remove any remaining invis auras on cast completion, should only be gnomish cloaking device
-    if (!m_IsTriggeredSpell  && !m_spellInfo->HasAttribute(SPELL_ATTR_EX_NOT_BREAK_STEALTH) && m_casterUnit)
-        m_casterUnit->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ON_CAST_SPELL);
+    if (!m_IsTriggeredSpell && m_casterUnit)
+        m_casterUnit->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_ACTION_CANCELS_LATE, m_spellInfo->Id, false, !ShouldRemoveStealthAuras());
 
     TakePower();
     TakeReagents();                                         // we must remove reagents before HandleEffects to allow place crafted item in same slot
@@ -4184,7 +4194,7 @@ void Spell::update(uint32 difftime)
                 cancel();
         }
         // don't cancel for melee, autorepeat, triggered and instant spells
-        else if (!m_spellInfo->IsNextMeleeSwingSpell() && !IsAutoRepeat() && !m_IsTriggeredSpell && (m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_MOVEMENT))
+        else if (!m_spellInfo->IsNextMeleeSwingSpell() && !IsAutoRepeat() && !m_IsTriggeredSpell && m_spellInfo->HasSpellInterruptFlag(SPELL_INTERRUPT_FLAG_MOVEMENT))
             cancel();
     }
 
@@ -4220,7 +4230,7 @@ void Spell::update(uint32 difftime)
                 if (m_casterUnit && m_casterUnit->IsPlayer())
                 {
                     uint32 interruptStates = (UNIT_STAT_FEIGN_DEATH | UNIT_STAT_CONFUSED | UNIT_STAT_FLEEING);
-                    if (m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_STUN)
+                    if (m_spellInfo->HasSpellInterruptFlag(SPELL_INTERRUPT_FLAG_STUN))
                         interruptStates |= UNIT_STAT_STUNNED;
                     if (m_casterUnit->HasUnitState(interruptStates))
                         cancel();
@@ -4234,7 +4244,6 @@ void Spell::update(uint32 difftime)
 
             if (m_timer == 0 && !m_spellInfo->IsNextMeleeSwingSpell() && !IsAutoRepeat())
             {
-                RemoveStealthAuras();
                 cast();
 
                 // For channeled spells with a cast time, cast start position is set when channeling begins.
@@ -4267,7 +4276,7 @@ void Spell::update(uint32 difftime)
                         cancel();
 
                     // check if player has turned if flag is set
-                    if (m_spellInfo->ChannelInterruptFlags & CHANNEL_FLAG_TURNING_CANCELS && m_castPosition.o != nowO)
+                    if (m_spellInfo->HasChannelInterruptFlag(AURA_INTERRUPT_TURNING_CANCELS) && m_castPosition.o != nowO)
                         cancel();
                 }
 
@@ -5543,7 +5552,7 @@ SpellCastResult Spell::CheckCast(bool strict)
         {
             // skip stuck spell to allow use it in falling case and apply spell limitations at movement
             if ((!m_caster->m_movementInfo.HasMovementFlag(MOVEFLAG_FALLINGFAR) || m_spellInfo->Effect[EFFECT_INDEX_0] != SPELL_EFFECT_STUCK) &&
-                    (IsAutoRepeat() || m_spellInfo->AuraInterruptFlags & AURA_INTERRUPT_FLAG_NOT_SEATED))
+                    (IsAutoRepeat() || m_spellInfo->HasAuraInterruptFlag(AURA_INTERRUPT_STANDING_CANCELS)))
                 return SPELL_FAILED_MOVING;
         }
 
@@ -5609,9 +5618,21 @@ SpellCastResult Spell::CheckCast(bool strict)
 
     if (Unit* target = m_targets.getUnitTarget())
     {
-        // A more powerful spell is already active
-        if (m_spellInfo->IsSpellAppliesAura() && !m_spellInfo->IsAreaOfEffectSpell() && m_spellInfo->IsPositiveSpell() && target->HasMorePowerfulSpellActive(m_spellInfo))
-            return SPELL_FAILED_AURA_BOUNCED;
+        if (m_spellInfo->IsSpellAppliesAura() && !m_spellInfo->IsAreaOfEffectSpell())
+        {
+            // A more powerful spell is already active
+            if (m_spellInfo->IsPositiveSpell() && target->HasMorePowerfulSpellActive(m_spellInfo))
+                return SPELL_FAILED_AURA_BOUNCED;
+
+            // Not castable on shapeshifted targets
+            if (m_spellInfo->HasAuraInterruptFlag(AURA_INTERRUPT_SHAPESHIFTING_CANCELS) && target->IsShapeShifted())
+                return SPELL_FAILED_BAD_TARGETS;
+
+            // Not castable on mounted targets
+            if (m_spellInfo->HasAuraInterruptFlag(AURA_INTERRUPT_MOUNT_CANCELS) && target->IsMounted())
+                return SPELL_FAILED_BAD_TARGETS;
+        }
+        
 
 #if SUPPORTED_CLIENT_BUILD > CLIENT_BUILD_1_10_2
         // Swiftmend
@@ -6139,8 +6160,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                     // hart version required facing
                     if (m_targets.getUnitTarget() &&
                        !m_caster->IsFriendlyTo(m_targets.getUnitTarget()) &&
-                       (m_caster->GetDistance2dToCenter(m_targets.getUnitTarget()) > NO_FACING_CHECKS_DISTANCE) &&
-                       !m_caster->HasInArc(m_targets.getUnitTarget()))
+                       !m_caster->IsFacingTarget(m_targets.getUnitTarget()))
                         return SPELL_FAILED_UNIT_NOT_INFRONT;
                 }
                 else if (m_spellInfo->Id == 13278) // Gnomish Death Ray
@@ -6967,16 +6987,6 @@ SpellCastResult Spell::CheckCast(bool strict)
                     return SPELL_FAILED_BAD_TARGETS;
                 break;
             }
-            case SPELL_AURA_WATER_WALK:
-            {
-                if (Unit* pTarget = m_targets.getUnitTarget())
-                {
-                    // Player is not allowed to cast water walk on shapeshifted / mounted target
-                    if (pTarget->IsShapeShifted() || pTarget->IsMounted())
-                        return SPELL_FAILED_BAD_TARGETS;
-                }
-                break;
-            }
             default:
                 break;
         }
@@ -7124,7 +7134,7 @@ SpellCastResult Spell::CheckCasterAuras() const
     // Have to check if there is a stun aura. Otherwise will have problems with ghost aura apply while logging out
     uint32 unitflag = m_casterUnit->GetUInt32Value(UNIT_FIELD_FLAGS);     // Get unit state
     if ((unitflag & UNIT_FLAG_STUNNED) && !(mechanic_immune & (1 << (MECHANIC_STUN - 1u))) && 
-        (!m_casttime || (m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_STUN)))
+        (!m_casttime || m_spellInfo->HasSpellInterruptFlag(SPELL_INTERRUPT_FLAG_STUN)))
         prevented_reason = SPELL_FAILED_STUNNED;
     else if ((unitflag & UNIT_FLAG_CONFUSED) && !(mechanic_immune & CONFUSED_MECHANIC_MASK))
         prevented_reason = SPELL_FAILED_CONFUSED;
@@ -7279,8 +7289,7 @@ SpellCastResult Spell::CheckRange(bool strict)
                     return SPELL_CAST_OK;
 
                 // Requires target forward for these spells
-                if ((m_caster->GetDistance2dToCenter(target) > NO_FACING_CHECKS_DISTANCE) &&
-                    !m_caster->HasInArc(target))
+                if (!m_caster->IsFacingTarget(target))
                     return SPELL_FAILED_UNIT_NOT_INFRONT;
 
                 float range_mod = 1.0f;
@@ -7333,8 +7342,7 @@ SpellCastResult Spell::CheckRange(bool strict)
             return SPELL_FAILED_TOO_CLOSE;
         if (m_caster->IsPlayer() &&
            (m_spellInfo->Custom & SPELL_CUSTOM_FACE_TARGET) &&
-           (m_caster->GetDistance2dToCenter(target) > NO_FACING_CHECKS_DISTANCE) &&
-           !m_caster->HasInArc(target))
+           !m_caster->IsFacingTarget(target))
             return SPELL_FAILED_UNIT_NOT_INFRONT;
     }
 
@@ -7900,7 +7908,7 @@ void Spell::Delayed()
         return;                                             // spell is active and can't be time-backed
 
     // spells not loosing casting time ( slam, dynamites, bombs.. )
-    if (!(m_spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_DAMAGE_PUSHBACK))
+    if (!m_spellInfo->HasSpellInterruptFlag(SPELL_INTERRUPT_FLAG_DAMAGE_PUSHBACK))
         return;
 
     //check resist chance
@@ -8409,6 +8417,10 @@ public:
                     i_centerY = i_castingObject->GetPositionY();
                 }
                 break;
+            case PUSH_SRC_CENTER:
+                i_centerX = i_spell.m_targets.m_srcX;
+                i_centerY = i_spell.m_targets.m_srcY;
+                break;
             case PUSH_DEST_CENTER:
                 i_centerX = i_spell.m_targets.m_destX;
                 i_centerY = i_spell.m_targets.m_destY;
@@ -8510,23 +8522,27 @@ public:
             switch (i_push_type)
             {
                 case PUSH_IN_FRONT:
-                    if (i_castingObject->isInFront(unit, i_radius, 2 * M_PI_F / 3))
+                    if (i_castingObject->IsWithinDist(unit, i_radius) && i_castingObject->HasInArc(unit, 2 * M_PI_F / 3))
                         i_data->push_back(unit);
                     break;
                 case PUSH_IN_FRONT_90:
-                    if (i_castingObject->isInFront(unit, i_radius, M_PI_F / 2))
+                    if (i_castingObject->IsWithinDist(unit, i_radius) && i_castingObject->HasInArc(unit, M_PI_F / 2))
                         i_data->push_back(unit);
                     break;
                 case PUSH_IN_FRONT_15:
-                    if (i_castingObject->isInFront(unit, i_radius, M_PI_F / 12))
+                    if (i_castingObject->IsWithinDist(unit, i_radius) && i_castingObject->HasInArc(unit, M_PI_F / 12))
                         i_data->push_back(unit);
                     break;
                 case PUSH_IN_BACK: // 75
-                    if (i_castingObject->isInBack(unit, i_radius, 5 * M_PI_F / 12))
+                    if (i_castingObject->IsWithinDist(unit, i_radius) && !i_castingObject->HasInArc(unit, 2 * M_PI_F - 5 * M_PI_F / 12))
                         i_data->push_back(unit);
                     break;
                 case PUSH_SELF_CENTER:
                     if (i_castingObject->IsWithinDist(unit, i_radius))
+                        i_data->push_back(unit);
+                    break;
+                case PUSH_SRC_CENTER:
+                    if (itr->getSource()->IsWithinDist3d(i_spell.m_targets.m_srcX, i_spell.m_targets.m_srcY, i_spell.m_targets.m_srcZ, i_radius))
                         i_data->push_back(unit);
                     break;
                 case PUSH_DEST_CENTER:
@@ -8709,40 +8725,38 @@ bool Spell::HasModifierApplied(SpellModifier* mod)
     return false;
 }
 
-void Spell::RemoveStealthAuras()
+bool Spell::ShouldRemoveStealthAuras()
 {
     if (!m_casterUnit)
-        return;
+        return false;
 
-    // stealth must be removed at cast starting (at show channel bar)
+    // Stealth must be removed at cast starting (at show channel bar)
     // skip triggered spell (item equip spell casting and other not explicit character casts/item uses)
-    if (!m_IsTriggeredSpell && !(m_spellInfo->AttributesEx & SPELL_ATTR_EX_NOT_BREAK_STEALTH) && m_casterUnit->IsPlayer()
-            && m_spellInfo->SpellIconID != 250 // Camouflage fufu
-            && m_spellInfo->SpellIconID != 103 // Roder ou Camouflage elfe de la nuit
-            && m_spellInfo->SpellIconID != 252 // Disparition
-       )
+    if (!m_IsTriggeredSpell && !(m_spellInfo->AttributesEx & SPELL_ATTR_EX_NOT_BREAK_STEALTH)
+        && m_spellInfo->SpellIconID != 250 // Camouflage
+        && m_spellInfo->SpellIconID != 103 // Shadowmeld
+        && m_spellInfo->SpellIconID != 252 // Vanish
+        )
     {
-        bool doUnaura = m_casterUnit->HasAuraType(SPELL_AURA_MOD_STEALTH);
+        bool doUnaura = true;
 
-        if (doUnaura && m_casterUnit->IsPlayer()
-                && m_spellInfo->SpellIconID == 249  // Assommer
-           )
+        // Sap
+        if (m_casterUnit->IsPlayer() && m_spellInfo->SpellIconID == 249)
         {
-            // Gestion de assommer ameliore
-            if (m_casterUnit->HasAura(14076))  // Rang 1
-                doUnaura = (urand(0, 99) > 30);
-            else if (m_casterUnit->HasAura(14094))  // Rang 2
-                doUnaura = (urand(0, 99) > 60);
-            else if (m_casterUnit->HasAura(14095))  // Rang 3
-                doUnaura = (urand(0, 99) > 90);
+            // Check for Improved Sap
+            if (m_casterUnit->HasAura(14076))  // Rank 1
+                doUnaura = !roll_chance_u(30);
+            else if (m_casterUnit->HasAura(14094))  // Rank 2
+                doUnaura = !roll_chance_u(60);
+            else if (m_casterUnit->HasAura(14095))  // Rank 3
+                doUnaura = !roll_chance_u(90);
         }
-        if (doUnaura)
-            m_casterUnit->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+        
+        return doUnaura;
     }
-    if (!m_IsTriggeredSpell)
-        m_casterUnit->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
-}
 
+    return false;
+}
 void Spell::Delete() const
 {
     if (IsDeletable())
