@@ -178,6 +178,8 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId)
         m_objectThreads->start<ThreadPool::MySQL<ThreadPool::MultiQueue>>();
     }
 
+	LoadElevatorTransports();
+
 #ifdef ENABLE_ELUNA
     sEluna->OnCreate(this);
 #endif /* ENABLE_ELUNA */
