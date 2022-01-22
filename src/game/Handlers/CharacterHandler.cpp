@@ -152,8 +152,8 @@ void WorldSession::HandleCharEnum(QueryResult* result)
         {
             uint32 guidlow = (*result)[0].GetUInt32();
             uint32 level   = (*result)[7].GetUInt32();
-            if (_characterMaxLevel < level)
-                _characterMaxLevel = level;
+            if (m_characterMaxLevel < level)
+                m_characterMaxLevel = level;
 
             DETAIL_LOG("Build enum data for char guid %u from account %u.", guidlow, GetAccountId());
             if (Player::BuildEnumData(result, &data))
@@ -165,7 +165,7 @@ void WorldSession::HandleCharEnum(QueryResult* result)
     }
 
     data.put<uint8>(0, num);
-    _charactersCount = num;
+    m_charactersCount = num;
 
     SendPacket(&data);
 }
@@ -293,7 +293,7 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
         return;
     }
 
-    if (_charactersCount >= sWorld.getConfig(CONFIG_UINT32_CHARACTERS_PER_REALM))
+    if (m_charactersCount >= sWorld.getConfig(CONFIG_UINT32_CHARACTERS_PER_REALM))
     {
         data << (uint8)CHAR_CREATE_SERVER_LIMIT;
         SendPacket(&data);
@@ -331,10 +331,9 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
     uint32 const guidLow = sObjectMgr.GeneratePlayerLowGuid();
     if (Player::SaveNewPlayer(this, guidLow, name, race_, class_, gender, skin, face, hairStyle, hairColor, facialHair))
     {
-        _charactersCount += 1;
+        m_charactersCount += 1;
 
-        LoginDatabase.PExecute("DELETE FROM realmcharacters WHERE acctid= '%u' AND realmid = '%u'", GetAccountId(), realmID);
-        LoginDatabase.PExecute("INSERT INTO realmcharacters (numchars, acctid, realmid) VALUES (%u, %u, %u)", _charactersCount, GetAccountId(), realmID);
+        LoginDatabase.PExecute("REPLACE INTO `realmcharacters` (`numchars`, `acctid`, `realmid`) VALUES (%u, %u, %u)", m_charactersCount, GetAccountId(), realmID);
 
         data << (uint8)CHAR_CREATE_SUCCESS;
         SendPacket(&data);
@@ -755,7 +754,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
         pCurrChar->SetStandState(UNIT_STAND_STATE_STAND);
 
     m_playerLoading = false;
-    _clientMoverGuid = pCurrChar->GetObjectGuid();
+    m_clientMoverGuid = pCurrChar->GetObjectGuid();
     delete holder;
     if (alreadyOnline)
     {
@@ -782,7 +781,6 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
     sEluna->OnLogin(pCurrChar);
 #endif /* ENABLE_ELUNA */
 
-    ALL_SESSION_SCRIPTS(this, OnLogin(pCurrChar));
 }
 
 void WorldSession::HandleSetFactionAtWarOpcode(WorldPacket& recv_data)

@@ -11,6 +11,9 @@
 
 #if defined TRINITY || AZEROTHCORE
 struct ScriptedAI;
+#elif VMANGOS
+class BasicAI;
+typedef BasicAI ScriptedAI;
 #else
 class AggressorAI;
 typedef AggressorAI ScriptedAI;
@@ -215,13 +218,22 @@ struct ElunaCreatureAI : ScriptedAI
             ScriptedAI::MoveInLineOfSight(who);
     }
 
+#ifdef VMANGOS
+    // Called when hit by a spell
+    void SpellHit(Unit* caster, SpellInfo const* spell)
+    {
+        if (!sEluna->SpellHit(me, caster, spell))
+            ScriptedAI::SpellHit(caster, spell);
+    }
+
+#else
     // Called when hit by a spell
     void SpellHit(Unit* caster, SpellInfo const* spell) override
     {
         if (!sEluna->SpellHit(me, caster, spell))
             ScriptedAI::SpellHit(caster, spell);
     }
-
+#endif
     // Called when spell hits a target
     void SpellHitTarget(Unit* target, SpellInfo const* spell) override
     {

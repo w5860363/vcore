@@ -2506,7 +2506,15 @@ namespace LuaUnit
     int StopSpellCast(lua_State* L, Unit* unit)
     {
         uint32 spellId = Eluna::CHECKVAL<uint32>(L, 2, 0);
+#ifdef VMANGOS
+        for (uint32 i = CURRENT_FIRST_NON_MELEE_SPELL; i < CURRENT_MAX_SPELL; ++i)
+            if (Spell* spell = unit->GetCurrentSpell(CurrentSpellTypes(i)))
+                if (spell->getState() == SPELL_STATE_PREPARING && spell->GetCastedTime())
+                    if (spell->m_spellInfo->IsNonCombatSpell())
+                        unit->InterruptSpell(CurrentSpellTypes(i), false);
+#else
         unit->CastStop(spellId);
+#endif
         return 0;
     }
 
@@ -2722,7 +2730,7 @@ namespace LuaUnit
         #if defined TRINITY || AZEROTHCORE
             unit->SendAttackStateUpdate(HITINFO_AFFECTS_VICTIM, target, 1, SPELL_SCHOOL_MASK_NORMAL, damage, 0, 0, VICTIMSTATE_HIT, 0);
         #elif defined VMANGOS
-            unit->SendAttackStateUpdate(HITINFO_AFFECTS_VICTIM, target, 1, SPELL_SCHOOL_MASK_NORMAL, damage, 0, 0, VICTIMSTATE_NORMAL, 0);
+            unit->SendAttackStateUpdate(HITINFO_AFFECTS_VICTIM, target, SPELL_SCHOOL_MASK_NORMAL, damage, 0, 0, VICTIMSTATE_NORMAL, 0);
         #else
             unit->SendAttackStateUpdate(HITINFO_NORMALSWING2, target, SPELL_SCHOOL_MASK_NORMAL, damage, 0, 0, VICTIMSTATE_NORMAL, 0);
         #endif
@@ -2832,7 +2840,7 @@ namespace LuaUnit
             unit->DealDamageMods(target, damage, &absorb);
             unit->DealDamage(target, damage, NULL, DIRECT_DAMAGE, schoolmask, NULL, false);
             #ifdef VMANGOS
-            unit->SendAttackStateUpdate(HITINFO_AFFECTS_VICTIM, target, 1, schoolmask, damage, absorb, resist, VICTIMSTATE_NORMAL, 0);
+            unit->SendAttackStateUpdate(HITINFO_AFFECTS_VICTIM, target, schoolmask, damage, absorb, resist, VICTIMSTATE_NORMAL, 0);
             #else
             unit->SendAttackStateUpdate(HITINFO_NORMALSWING2, target, schoolmask, damage, absorb, resist, VICTIMSTATE_NORMAL, 0);
             #endif
@@ -2840,7 +2848,8 @@ namespace LuaUnit
         }
 
         // non-melee damage
-        unit->SpellNonMeleeDamageLog(target, spell, damage);
+        //unit->SpellNonMeleeDamageLog(target, spell, damage);
+        unit->SendSpellNonMeleeDamageLog(target, spell, damage, SPELL_SCHOOL_MASK_NONE,0,0,false,0);
         return 0;
 #endif
     }

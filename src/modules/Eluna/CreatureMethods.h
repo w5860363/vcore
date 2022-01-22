@@ -58,6 +58,8 @@ namespace LuaCreature
 
 #ifdef MANGOS
         Eluna::Push(L, creature->IsTargetableForAttack(mustBeDead));
+#elif VMANGOS
+        Eluna::Push(L, creature->IsTargetableBy(NULL,false, mustBeDead));
 #else
         Eluna::Push(L, creature->IsTargetable(true,false,false,mustBeDead));
 #endif

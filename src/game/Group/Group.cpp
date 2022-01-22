@@ -148,7 +148,7 @@ bool Group::Create(ObjectGuid guid, char const*  name)
         CharacterDatabase.PExecute("DELETE FROM `groups` WHERE `group_id` ='%u'", m_Id);
         CharacterDatabase.PExecute("DELETE FROM `group_member` WHERE `group_id` ='%u'", m_Id);
 
-        CharacterDatabase.PExecute("INSERT INTO `groups` (`group_id`, `leader_guid`, `main_tank_guid`, `main_assistant_guid`, `loot_method`, `looter_guid`, `loot_threshold`, `icon1`, `icon2`, `icon3`, `icon4`, `icon5`, `icon6`, `icon7`, `icon8`, `is_raid`) "
+        CharacterDatabase.PExecute("REPLACE INTO `groups` (`group_id`, `leader_guid`, `main_tank_guid`, `main_assistant_guid`, `loot_method`, `looter_guid`, `loot_threshold`, `icon1`, `icon2`, `icon3`, `icon4`, `icon5`, `icon6`, `icon7`, `icon8`, `is_raid`) "
                                    "VALUES('%u','%u','%u','%u','%u','%u','%u','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','%u')",
                                    m_Id, m_leaderGuid.GetCounter(), m_mainTankGuid.GetCounter(), m_mainAssistantGuid.GetCounter(), uint32(m_lootMethod),
                                    m_looterGuid.GetCounter(), uint32(m_lootThreshold),
@@ -242,8 +242,15 @@ void Group::ConvertToRaid()
 
     // update quest related GO states (quest activity dependent from raid membership)
     for (const auto& itr : m_memberSlots)
+    {
         if (Player* player = sObjectMgr.GetPlayer(itr.guid))
-            player->UpdateForQuestWorldObjects();
+        {
+            player->m_Events.AddLambdaEventAtOffset([player]
+            {
+                player->UpdateForQuestWorldObjects();
+            }, 1);
+        }
+    }
 }
 
 bool Group::AddInvite(Player* player)
@@ -354,7 +361,12 @@ bool Group::AddMember(ObjectGuid guid, char const* name, uint8 joinMethod)
 
         // quest related GO state dependent from raid membership
         if (isRaidGroup())
-            player->UpdateForQuestWorldObjects();
+        {
+            player->m_Events.AddLambdaEventAtOffset([player]
+            {
+                player->UpdateForQuestWorldObjects();
+            }, 1);
+        }
 
         if (isInLFG())
         {
@@ -442,7 +454,12 @@ uint32 Group::RemoveMember(ObjectGuid guid, uint8 removeMethod)
         {
             // quest related GO state dependent from raid membership
             if (isRaidGroup())
-                player->UpdateForQuestWorldObjects();
+            {
+                player->m_Events.AddLambdaEventAtOffset([player]
+                {
+                    player->UpdateForQuestWorldObjects();
+                }, 1);
+            }
 
             WorldPacket data;
 
@@ -554,7 +571,12 @@ void Group::Disband(bool hideDestroy)
 
         // quest related GO state dependent from raid membership
         if (isRaidGroup())
-            player->UpdateForQuestWorldObjects();
+        {
+            player->m_Events.AddLambdaEventAtOffset([player]
+            {
+                player->UpdateForQuestWorldObjects();
+            }, 1);
+        }
 
         if (!player->GetSession())
             continue;

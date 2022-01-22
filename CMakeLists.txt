@@ -39,6 +39,10 @@ option(USE_EXTRACTORS "Compile extractors" OFF)
 option(USE_LIBCURL "Compile with libcurl for email support" OFF)
 option(SCRIPT_LIB_ELUNA "Compile with support for Eluna scripts" 1)
 
+if(UNIX)
+  option(DEBUG_SYMBOLS "Include Debug Symbols" ON)
+endif()
+
 find_package(PCHSupport)
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16")
   option(USE_PCH "Use precompiled headers" ON)
