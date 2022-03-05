@@ -1,4 +1,3 @@
-[![vmangos CI build](https://github.com/vmangos/core/actions/workflows/vmangos.yml/badge.svg)](https://github.com/vmangos/core/actions/workflows/vmangos.yml)
 
 # VMangos-eluna
 This project is a [VMangos](https://github.com/vmangos/core) version with [Eluna](https://github.com/ElunaLuaEngine/Eluna) code merged.
