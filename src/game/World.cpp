@@ -1345,6 +1345,12 @@ void World::SetInitialWorldSettings()
     sObjectMgr.SetHighestGuids();                           // must be after packing instances
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "");
 
+#ifdef ENABLE_ELUNA
+    //need to be set here, or will leads to error when loading Transports
+    ELUNA_LOG_INFO("Initialize Eluna Lua Engine...");
+    Eluna::Initialize();
+#endif
+
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Loading Broadcast Texts...");
 
     sObjectMgr.LoadBroadcastTexts();
@@ -1786,8 +1792,6 @@ void World::SetInitialWorldSettings()
 
 
 #ifdef ENABLE_ELUNA
-    ELUNA_LOG_INFO("Initialize Eluna Lua Engine...");
-    Eluna::Initialize();
 
     sEluna->RunScripts();
     sEluna->OnConfigLoad(false); // Must be done after Eluna is initialized and scripts have run.
