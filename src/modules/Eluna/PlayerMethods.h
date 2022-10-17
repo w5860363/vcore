@@ -3137,6 +3137,27 @@ namespace LuaPlayer
         // ok, normal (creature/GO starting) quest
         if (player->CanAddQuest(quest, true))
             player->AddQuestAndCheckCompletion(quest, NULL);
+#elif VMANGOS
+        // check item starting quest (it can work incorrectly if added without item in inventory)
+        for (const auto& item : sObjectMgr.GetItemPrototypeMap())
+        {
+            uint32 i = item.first;
+            ItemPrototype const* pProto = &item.second;
+            if (!pProto)
+                continue;
+
+            if (pProto->StartQuest == entry)
+                return 0;
+        }
+
+        // ok, normal (creature/GO starting) quest
+        if (player->CanAddQuest(quest, true))
+        {
+            player->AddQuest(quest, NULL);
+
+            if (player->CanCompleteQuest(entry))
+                player->CompleteQuest(entry);
+        }
 #else
         // check item starting quest (it can work incorrectly if added without item in inventory)
         for (uint32 id = 0; id < sItemStorage.GetMaxEntry(); ++id)
