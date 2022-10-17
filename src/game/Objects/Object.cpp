@@ -44,6 +44,7 @@
 #include "Geometry.h"
 #include "ObjectPosSelector.h"
 #include "MoveMapSharedDefines.h"
+#include "PathFinder.h"
 #include "TemporarySummon.h"
 #include "ZoneScriptMgr.h"
 #include "InstanceData.h"
@@ -203,22 +204,22 @@ Object::~Object()
     if (IsInWorld())
     {
         ///- Do NOT call RemoveFromWorld here, if the object is a player it will crash
-        sLog.outError("Object::~Object (GUID: %u TypeId: %u) deleted but still in world!!", GetGUIDLow(), GetTypeId());
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Object::~Object (GUID: %u TypeId: %u) deleted but still in world!!", GetGUIDLow(), GetTypeId());
         MANGOS_ASSERT(false);
     }
 
     if (m_objectUpdated)
     {
-        sLog.outError("Object::~Object (GUID: %u TypeId: %u) deleted but still have updated status!!", GetGUIDLow(), GetTypeId());
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Object::~Object (GUID: %u TypeId: %u) deleted but still have updated status!!", GetGUIDLow(), GetTypeId());
         MANGOS_ASSERT(false);
     }
 
     if (m_uint32Values)
     {
-        //DEBUG_LOG("Object desctr 1 check (%p)",(void*)this);
+        //sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "Object desctr 1 check (%p)",(void*)this);
         delete [] m_uint32Values;
         delete [] m_uint32Values_mirror;
-        //DEBUG_LOG("Object desctr 2 check (%p)",(void*)this);
+        //sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "Object desctr 2 check (%p)",(void*)this);
     }
 }
 
@@ -297,7 +298,7 @@ void Object::BuildCreateUpdateBlockForPlayer(UpdateData& data, Player* target) c
         updateFlags |= UPDATEFLAG_SELF;
 #endif
 
-    //DEBUG_LOG("BuildCreateUpdate: update-type: %u, object-type: %u got updateFlags: %X", updatetype, m_objectTypeId, updateFlags);
+    //sLog.Out(LOG_BASIC, LOG_LVL_DEBUG, "BuildCreateUpdate: update-type: %u, object-type: %u got updateFlags: %X", updatetype, m_objectTypeId, updateFlags);
 
     ByteBuffer buf(500);
     buf << (uint8)updatetype;
@@ -808,6 +809,15 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
                     }
                     *data << m_uint32Values[index];
                 }
+#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_12_1
+                else if (index == UNIT_MOD_CAST_SPEED)
+                {
+                    if (m_floatValues[index] < 0.001f)
+                        *data << float(0.0f);
+                    else
+                        *data << m_floatValues[index];
+                }
+#endif
                 else
                 {
                     // send in current format (float as float, uint32 as uint32)
@@ -886,7 +896,7 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer* data, UpdateMask* u
                 // Static item flags are part of that field prior to patch 1.7.
                 if (index == ITEM_FIELD_FLAGS)
                 {
-                    if (ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(GetEntry()))
+                    if (ItemPrototype const* pProto = sObjectMgr.GetItemPrototype(GetEntry()))
                         *data << uint16(pProto->Flags);
                     else
                         *data << uint16(0);
@@ -1113,7 +1123,7 @@ void Object::SetByteValue(uint16 index, uint8 offset, uint8 value)
 
     if (offset > 4)
     {
-        sLog.outError("Object::SetByteValue: wrong offset %u", offset);
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Object::SetByteValue: wrong offset %u", offset);
         return;
     }
 
@@ -1131,7 +1141,7 @@ void Object::SetUInt16Value(uint16 index, uint8 offset, uint16 value)
 
     if (offset > 2)
     {
-        sLog.outError("Object::SetUInt16Value: wrong offset %u", offset);
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Object::SetUInt16Value: wrong offset %u", offset);
         return;
     }
 
@@ -1223,7 +1233,7 @@ void Object::SetByteFlag(uint16 index, uint8 offset, uint8 newFlag)
 
     if (offset > 4)
     {
-        sLog.outError("Object::SetByteFlag: wrong offset %u", offset);
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Object::SetByteFlag: wrong offset %u", offset);
         return;
     }
 
@@ -1240,7 +1250,7 @@ void Object::RemoveByteFlag(uint16 index, uint8 offset, uint8 oldFlag)
 
     if (offset > 4)
     {
-        sLog.outError("Object::RemoveByteFlag: wrong offset %u", offset);
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Object::RemoveByteFlag: wrong offset %u", offset);
         return;
     }
 
@@ -1275,7 +1285,7 @@ void Object::RemoveShortFlag(uint16 index, bool highpart, uint16 oldFlag)
 
 bool Object::PrintIndexError(uint32 index, bool set) const
 {
-    sLog.outInfo("%s nonexistent value field: %u (count: %u) for object typeid: %u type mask: %u",
+    sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "%s nonexistent value field: %u (count: %u) for object typeid: %u type mask: %u",
                     (set ? "set value to" : "get value from"), index, m_valuesCount, GetTypeId(), m_objectType);
 
     // ASSERT must fail after function call
@@ -1298,19 +1308,19 @@ void Object::BuildUpdateDataForPlayer(Player* pl, UpdateDataMapType& update_play
 
 void Object::AddToClientUpdateList()
 {
-    sLog.outError("Unexpected call of Object::AddToClientUpdateList for object (TypeId: %u Update fields: %u)", GetTypeId(), m_valuesCount);
+    sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Unexpected call of Object::AddToClientUpdateList for object (TypeId: %u Update fields: %u)", GetTypeId(), m_valuesCount);
     MANGOS_ASSERT(false);
 }
 
 void Object::RemoveFromClientUpdateList()
 {
-    sLog.outError("Unexpected call of Object::RemoveFromClientUpdateList for object (TypeId: %u Update fields: %u)", GetTypeId(), m_valuesCount);
+    sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Unexpected call of Object::RemoveFromClientUpdateList for object (TypeId: %u Update fields: %u)", GetTypeId(), m_valuesCount);
     MANGOS_ASSERT(false);
 }
 
 void Object::BuildUpdateData(UpdateDataMapType& /*update_players */)
 {
-    sLog.outError("Unexpected call of Object::BuildUpdateData for object (TypeId: %u Update fields: %u)", GetTypeId(), m_valuesCount);
+    sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Unexpected call of Object::BuildUpdateData for object (TypeId: %u Update fields: %u)", GetTypeId(), m_valuesCount);
     MANGOS_ASSERT(false);
 }
 
@@ -1986,6 +1996,87 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
     }
 }
 
+void WorldObject::MovePositionToFirstCollision(Position& pos, float dist, float angle)
+{
+    float destX = pos.x + dist * cos(angle);
+    float destY = pos.y + dist * sin(angle);
+    float destZ = pos.z;
+
+    GenericTransport* transport = GetTransport();
+
+    float halfHeight = IsUnit() ? static_cast<Unit*>(this)->GetCollisionHeight() : 0.0f;
+    if (IsUnit())
+    {
+        PathFinder path(static_cast<Unit*>(this));
+        Vector3 src(pos.x, pos.y, pos.z);
+        Vector3 dest(destX, destY, destZ + halfHeight);
+        if (transport) // need to use offsets for PF check
+        {
+            transport->CalculatePassengerOffset(src.x, src.y, src.z);
+            transport->CalculatePassengerOffset(dest.x, dest.y, dest.z);
+        }
+        path.calculate(src, dest, false, true);
+        if (path.getPathType())
+        {
+            G3D::Vector3 result = path.getPath().back();
+            destX = result.x;
+            destY = result.y;
+            destZ = result.z;
+            if (transport) // transport produces offset, but we need global pos
+                transport->CalculatePassengerPosition(destX, destY, destZ);
+        }
+    }
+
+    UpdateAllowedPositionZ(destX, destY, destZ);
+    destZ += halfHeight;
+    bool colPoint = GetMap()->GetLosHitPosition(pos.x, pos.y, pos.z + halfHeight, destX, destY, destZ, -0.5f);
+    destZ -= halfHeight;
+
+    if (colPoint)
+    {
+        destX -= CONTACT_DISTANCE * cos(angle);
+        destY -= CONTACT_DISTANCE * sin(angle);
+        dist = sqrt((pos.x - destX) * (pos.x - destX) + (pos.y - destY) * (pos.y - destY));
+    }
+
+    colPoint = GetMap()->GetLosHitPosition(destX, destY, destZ + halfHeight, destX, destY, destZ, -0.5f);
+    if (colPoint)
+        dist = sqrt((pos.x - destX) * (pos.x - destX) + (pos.y - destY) * (pos.y - destY));
+
+    float step = dist / 10.0f;
+    Position tempPos(destX, destY, destZ, 0.f);
+    bool distanceZSafe = true;
+    float previousZ = destZ;
+
+    for (int i = 0; i < 10; i++)
+    {
+        if (fabs(pos.z - destZ) > ATTACK_DISTANCE)
+        {
+            previousZ = destZ;
+            destX -= step * cos(angle);
+            destY -= step * sin(angle);
+            UpdateAllowedPositionZ(destX, destY, destZ);
+            if (fabs(previousZ - destZ) > (ATTACK_DISTANCE / 2))
+                distanceZSafe = false;
+        }
+        else
+        {
+            pos.x = destX;
+            pos.y = destY;
+            pos.z = destZ;
+            break;
+        }
+    }
+
+    if (distanceZSafe)
+        pos = tempPos;
+
+    MaNGOS::NormalizeMapCoord(pos.x);
+    MaNGOS::NormalizeMapCoord(pos.y);
+    UpdateAllowedPositionZ(pos.x, pos.y, pos.z);
+    pos.o = m_position.o;
+}
+
 bool WorldObject::IsPositionValid() const
 {
     return MaNGOS::IsValidMapCoord(m_position.x, m_position.y, m_position.z, m_position.o);
@@ -2183,7 +2274,7 @@ void WorldObject::SetCreatureSummonLimit(uint32 limit)
     if (FindMap())
         return FindMap()->SetSummonLimitForObject(GetGUID(), limit);
     else
-        sLog.outError("Attempt to set summon limit for %s but object is not added to map yet!", GetObjectGuid().GetString().c_str());
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Attempt to set summon limit for %s but object is not added to map yet!", GetObjectGuid().GetString().c_str());
 }
 
 uint32 Map::GetSummonCountForObject(uint64 guid) const
@@ -2222,7 +2313,7 @@ void WorldObject::DecrementSummonCounter()
             m_summonLimitAlert = 0;
     }
     else
-        sLog.outError("Attempt to decrement summon count for %s but object is not added to map yet!", GetObjectGuid().GetString().c_str());
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Attempt to decrement summon count for %s but object is not added to map yet!", GetObjectGuid().GetString().c_str());
 }
 
 void Map::IncrementSummonCountForObject(uint64 guid)
@@ -2235,7 +2326,7 @@ void WorldObject::IncrementSummonCounter()
     if (FindMap())
         FindMap()->IncrementSummonCountForObject(GetGUID());
     else
-        sLog.outError("Attempt to increment summon count for %s but object is not added to map yet!", GetObjectGuid().GetString().c_str());
+        sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Attempt to increment summon count for %s but object is not added to map yet!", GetObjectGuid().GetString().c_str());
 }
 
 Creature* Map::SummonCreature(uint32 entry, float x, float y, float z, float ang, TempSummonType spwtype, uint32 despwtime, bool asActiveObject)
@@ -2273,14 +2364,14 @@ Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, floa
     CreatureInfo const* cinfo = ObjectMgr::GetCreatureTemplate(id);
     if (!cinfo)
     {
-        sLog.outErrorDb("WorldObject::SummonCreature: Creature (Entry: %u) not existed for summoner: %s. ", id, GetGuidStr().c_str());
+        sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "WorldObject::SummonCreature: Creature (Entry: %u) not existed for summoner: %s. ", id, GetGuidStr().c_str());
         return nullptr;
     }
 
     uint32 const currentSummonCount = GetCreatureSummonCount();
     if (currentSummonCount >= GetCreatureSummonLimit())
     {
-        sLog.outInfo("WorldObject::SummonCreature: %s in (map %u, instance %u) attempted to summon Creature (Entry: %u), but already has %u active summons",
+        sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "WorldObject::SummonCreature: %s in (map %u, instance %u) attempted to summon Creature (Entry: %u), but already has %u active summons",
             GetGuidStr().c_str(), GetMapId(), GetInstanceId(), id, currentSummonCount);
 
         // Alert GMs in the next tick if we don't already have an alert scheduled
@@ -2343,7 +2434,7 @@ GameObject* WorldObject::SummonGameObject(uint32 entry, float x, float y, float 
     GameObjectInfo const* goinfo = sObjectMgr.GetGameObjectInfo(entry);
     if (!goinfo)
     {
-        sLog.outErrorDb("Gameobject template %u not found in database!", entry);
+        sLog.Out(LOG_DBERROR, LOG_LVL_MINIMAL, "Gameobject template %u not found in database!", entry);
         return nullptr;
     }
     Map* map = GetMap();
@@ -2892,8 +2983,28 @@ GameObject* WorldObject::FindRandomGameObject(uint32 entry, float range) const
 Player* WorldObject::FindNearestPlayer(float range) const
 {
     Player* target = nullptr;
-    MaNGOS::NearestUnitCheck check(this, range);
-    MaNGOS::PlayerLastSearcher<MaNGOS::NearestUnitCheck> searcher(target, check);
+    MaNGOS::NearestAlivePlayerCheck check(this, range);
+    MaNGOS::PlayerLastSearcher<MaNGOS::NearestAlivePlayerCheck> searcher(target, check);
+    Cell::VisitWorldObjects(this, searcher, range);
+
+    return target;
+}
+
+Player* WorldObject::FindNearestHostilePlayer(float range) const
+{
+    Player* target = nullptr;
+    MaNGOS::NearestHostileUnitCheck check(this, range);
+    MaNGOS::PlayerLastSearcher<MaNGOS::NearestHostileUnitCheck> searcher(target, check);
+    Cell::VisitWorldObjects(this, searcher, range);
+
+    return target;
+}
+
+Player* WorldObject::FindNearestFriendlyPlayer(float range) const
+{
+    Player* target = nullptr;
+    MaNGOS::NearestFriendlyUnitCheck check(this, range);
+    MaNGOS::PlayerLastSearcher<MaNGOS::NearestFriendlyUnitCheck> searcher(target, check);
     Cell::VisitWorldObjects(this, searcher, range);
 
     return target;
@@ -3063,7 +3174,7 @@ bool WorldObject::IsLikePlayer() const
 
 bool WorldObject::PrintCoordinatesError(float x, float y, float z, char const* descr) const
 {
-    sLog.outError("%s with invalid %s coordinates: mapid = %uu, x = %f, y = %f, z = %f", GetGuidStr().c_str(), descr, GetMapId(), x, y, z);
+    sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "%s with invalid %s coordinates: mapid = %uu, x = %f, y = %f, z = %f", GetGuidStr().c_str(), descr, GetMapId(), x, y, z);
     return false;                                           // always false for continue assert fail
 }
 
@@ -3315,7 +3426,7 @@ FactionTemplateEntry const* WorldObject::GetFactionTemplateEntry() const
 
         if (GetObjectGuid() != guid)
         {
-            sLog.outError("%s have invalid faction (faction template id) #%u", GetGuidStr().c_str(), GetFactionTemplateId());
+            sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "%s have invalid faction (faction template id) #%u", GetGuidStr().c_str(), GetFactionTemplateId());
             guid = GetObjectGuid();
         }
     }

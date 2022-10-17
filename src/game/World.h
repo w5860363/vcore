@@ -330,12 +330,12 @@ enum eConfigUInt32Values
     CONFIG_UINT32_AC_WARDEN_SCAN_FREQUENCY,
     CONFIG_UINT32_AC_WARDEN_DEFAULT_PENALTY,
     CONFIG_UINT32_AC_WARDEN_CLIENT_BAN_DURATION,
-    CONFIG_UINT32_AC_WARDEN_DB_LOGLEVEL,
     CONFIG_UINT32_AUTOBROADCAST_INTERVAL,
     CONFIG_UINT32_PARTY_BOT_MAX_BOTS,
     CONFIG_UINT32_PARTY_BOT_AUTO_EQUIP,
     CONFIG_UINT32_BATTLE_BOT_AUTO_EQUIP,
     CONFIG_UINT32_PARTY_BOT_RANDOM_GEAR_LEVEL_DIFFERENCE,
+    CONFIG_UINT32_PVP_POOL_SIZE_PER_FACTION,
     CONFIG_UINT32_VALUE_COUNT
 };
 
@@ -562,6 +562,7 @@ enum eConfigBoolValues
     CONFIG_BOOL_AC_MOVEMENT_CHEAT_TELE_TO_TRANSPORT_ENABLED,
     CONFIG_BOOL_AC_MOVEMENT_CHEAT_TELE_TO_TRANSPORT_REJECT,
     CONFIG_BOOL_AC_MOVEMENT_CHEAT_FAKE_TRANSPORT_ENABLED,
+    CONFIG_BOOL_AC_MOVEMENT_CHEAT_FAKE_TRANSPORT_REJECT,
     CONFIG_BOOL_AC_MOVEMENT_CHEAT_WATER_WALK_ENABLED,
     CONFIG_BOOL_AC_MOVEMENT_CHEAT_WATER_WALK_REJECT,
     CONFIG_BOOL_AC_MOVEMENT_CHEAT_SLOW_FALL_ENABLED,
@@ -586,6 +587,7 @@ enum eConfigBoolValues
     CONFIG_BOOL_PLAYER_BOT_SHOW_IN_WHO_LIST,
     CONFIG_BOOL_PARTY_BOT_SKIP_CHECKS,
     CONFIG_BOOL_WORLD_AVAILABLE,
+    CONFIG_BOOL_GM_CHEAT_GOD,
     CONFIG_BOOL_VALUE_COUNT
 };
 
@@ -879,8 +881,6 @@ class World
          * Database logs system
          */
         void LogMoneyTrade(ObjectGuid sender, ObjectGuid receiver, uint32 amount, char const* type, uint32 dataInt);
-        void LogCharacter(Player* character, char const* action);
-        void LogCharacter(WorldSession* sess, uint32 lowGuid, std::string const& charName, char const* action);
         void LogChat(WorldSession* sess, char const* type, std::string const& msg, PlayerPointer target = nullptr, uint32 chanId = 0, char const* chanStr = nullptr);
         void LogTransaction(PlayerTransactionData const& data);
         void Shutdown();

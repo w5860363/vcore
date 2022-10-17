@@ -2097,6 +2097,8 @@ namespace LuaGlobalFunctions
 
 #if defined TRINITY || AZEROTHCORE
             ItemTemplate const* item_proto = eObjectMgr->GetItemTemplate(entry);
+#elif VMANGOS
+            ItemTemplate const* item_proto = eObjectMgr->GetItemTemplate(entry);
 #else
             ItemTemplate const* item_proto = ObjectMgr::GetItemPrototype(entry);
 #endif

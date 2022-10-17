@@ -51,6 +51,16 @@ typedef QueryResult ElunaQuery;
 #define ELUNA_LOG_ERROR(...)    sLog->outError(__VA_ARGS__);
 #define ELUNA_LOG_DEBUG(...)    sLog->outDebug(LOG_FILTER_NONE,__VA_ARGS__);
 #define GET_GUID                GetGUID
+#elif VMANGOS
+typedef QueryNamedResult ElunaQuery;
+#define ASSERT                  MANGOS_ASSERT
+#define ELUNA_LOG_INFO(...)     sLog.Out(LOG_ELUNA, LOG_LVL_BASIC,__VA_ARGS__);
+#define ELUNA_LOG_ERROR(...)    sLog.Out(LOG_ELUNA, LOG_LVL_ERROR,__VA_ARGS__);
+#define ELUNA_LOG_DEBUG(...)    sLog.Out(LOG_ELUNA, LOG_LVL_DEBUG,__VA_ARGS__);
+#define GET_GUID                GetObjectGuid
+#define GetGameObjectTemplate   GetGameObjectInfo
+#define GetItemTemplate         GetItemPrototype
+#define GetTemplate             GetProto
 #else
 typedef QueryNamedResult ElunaQuery;
 #define ASSERT                  MANGOS_ASSERT
