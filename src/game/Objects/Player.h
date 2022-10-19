@@ -1209,6 +1209,9 @@ class Player final: public Unit
 
         uint32 GetMoney() const { return GetUInt32Value(PLAYER_FIELD_COINAGE); }
         void LogModifyMoney(int32 d, char const* type, ObjectGuid fromGuid = ObjectGuid(), uint32 data = 0);
+#ifdef ENABLE_ELUNA
+        void ModifyMoney(int32 d);       
+#else
         void ModifyMoney(int32 d)
         {
             if (d < 0)
@@ -1216,6 +1219,7 @@ class Player final: public Unit
             else
                 SetMoney(GetMoney() < uint32(MAX_MONEY_AMOUNT - d) ? GetMoney() + d : MAX_MONEY_AMOUNT);
         }
+#endif
         void LootMoney(int32 g, Loot* loot);
         std::string GetShortDescription() const; // "player:guid [username:accountId@IP]"
 

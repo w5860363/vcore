@@ -81,6 +81,10 @@
 #include "world/scourge_invasion.h"
 #include "world/world_event_wareffort.h"
 
+#ifdef ENABLE_ELUNA
+#include "LuaEngine.h"
+#endif /* ENABLE_ELUNA */
+
 #define ZONE_UPDATE_INTERVAL (1*IN_MILLISECONDS)
 
 #define PLAYER_SKILL_INDEX(x)       (PLAYER_SKILL_INFO_1_1 + ((x)*3))
@@ -3348,6 +3352,10 @@ void Player::GiveLevel(uint32 level)
 {
     if (level == GetLevel())
         return;
+
+#ifdef ENABLE_ELUNA
+    sEluna->OnLevelChanged(this, level);
+#endif
 
     uint32 numInstanceMembers = 0;
     uint32 numGroupMembers = 0;
@@ -14390,6 +14398,18 @@ void Player::LogModifyMoney(int32 d, char const* type, ObjectGuid fromGuid, uint
     }
     ModifyMoney(d);
 }
+
+#ifdef ENABLE_ELUNA
+void Player::ModifyMoney(int32 d)
+{
+    sEluna->OnMoneyChanged(this, d);
+
+    if (d < 0)
+        SetMoney(GetMoney() > uint32(-d) ? GetMoney() + d : 0);
+    else
+        SetMoney(GetMoney() < uint32(MAX_MONEY_AMOUNT - d) ? GetMoney() + d : MAX_MONEY_AMOUNT);
+}
+#endif
 
 void Player::MoneyChanged(uint32 count)
 {
