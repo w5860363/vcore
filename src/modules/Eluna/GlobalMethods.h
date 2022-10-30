@@ -397,11 +397,12 @@ namespace LuaGlobalFunctions
         std::string name = temp->Name1;
         if (ItemLocale const* il = eObjectMgr->GetItemLocale(entry))
             {
-                #ifdef VMANGOS
-                sObjectMgr.GetAreaLocaleString(entry, locale, &name);
-                #else
+#ifdef VMANGOS
+                //sObjectMgr.GetAreaLocaleString(entry, locale, &name);
+                name = il->Name[locale];
+#else
                 ObjectMgr::GetLocaleString(il->Name, static_cast<LocaleConstant>(locale), name);
-                #endif
+#endif
             }
             
         std::ostringstream oss;
