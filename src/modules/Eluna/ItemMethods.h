@@ -270,7 +270,8 @@ namespace LuaItem
         if (ItemLocale const* il = eObjectMgr->GetItemLocale(temp->ItemId))
         {
             #ifdef VMANGOS
-            sObjectMgr.GetAreaLocaleString(item->GetEntry(), locale, &name);
+            //sObjectMgr.GetAreaLocaleString(item->GetEntry(), locale, &name);
+            name = il->Name[locale];
             #else
             ObjectMgr::GetLocaleString(il->Name, static_cast<LocaleConstant>(locale), name);
             #endif
