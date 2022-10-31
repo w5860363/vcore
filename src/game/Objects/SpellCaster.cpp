@@ -2340,7 +2340,7 @@ time_t SpellCaster::GetSpellCooldownDelay(uint32 spellId)
 
 	auto currTime = sWorld.GetCurrentClockTime();
     std::chrono::system_clock::duration duration = expireTime - currTime;
-    std::chrono::milliseconds& milliSec = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+    std::chrono::milliseconds milliSec = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
 	return expireTime > currTime ? milliSec.count() : 0;
 }
 
