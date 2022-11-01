@@ -2246,7 +2246,7 @@ Visibility.GroupMode               = 0
 Visibility.Distance.Continents     = 100
 Visibility.Distance.Continents.Min = 60
 Visibility.Distance.Instances      = 170
-Visibility.Distance.BG             = 533
+Visibility.Distance.BG             = 180
 Visibility.Distance.InFlight       = 100
 Visibility.Distance.Grey.Unit      = 1
 Visibility.Distance.Grey.Object    = 10
@@ -2578,6 +2578,24 @@ Alterac.InitMaxPlayers = 0
 
 OutdoorPvp.SIEnabled = 1
 OutdoorPvp.EPEnabled = 1
+
+###################################################################################################################
+# MEETING STONE LFG CONFIG
+#
+#    LFG.Matchmaking
+#        Check talents of players in queue when making a group
+#        Default: 0 (disable - disregard talents, use class priorities, e.g. warrior - tank, paladin - healer)
+#                 1 (enable - set role based on talent tree that has more talent points)
+#
+#    LFG.MatchmakingTimer
+#        The time (in seconds) before player in LFG queue stops using matchmaking to find group faster
+#        Only works if matchmaking is enabled
+#        Default: 600 (5 minutes)
+#
+###################################################################################################################
+
+LFG.Matchmaking = 0
+LFG.MatchmakingTimer = 600
 
 ###################################################################################################################
 #

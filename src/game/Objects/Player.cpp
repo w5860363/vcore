@@ -43,6 +43,7 @@
 #include "MapPersistentStateMgr.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
+#include "Geometry.h"
 #include "CellImpl.h"
 #include "ObjectMgr.h"
 #include "ObjectAccessor.h"
@@ -608,6 +609,7 @@ Player::Player(WorldSession* session) : Unit(),
     SetGroupInvite(nullptr);
     m_groupUpdateMask = 0;
     m_auraUpdateMask = 0;
+    m_LFGAreaId = 0;
 
     duel = nullptr;
 
@@ -1649,6 +1651,9 @@ void Player::Update(uint32 update_diff, uint32 p_time)
     // Played time
     if (now > m_lastTick)
     {
+        if (IsInWorld() && IsInCombat() && !GetMap()->IsDungeon())
+            LeaveCombatWithFarAwayCreatures();
+
         uint32 elapsed = uint32(now - m_lastTick);
         m_playedTime[PLAYED_TIME_TOTAL] += elapsed;        // Total played time
         m_playedTime[PLAYED_TIME_LEVEL] += elapsed;        // Level played time
@@ -2887,6 +2892,10 @@ bool Player::CanInteractWithNPC(Creature const* pCreature, uint32 npcflagmask) c
 
     // combat check
     if (pCreature->IsInCombat())
+        return false;
+
+    // not interactable
+    if (pCreature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
         return false;
 
     // not unfriendly
@@ -4972,6 +4981,7 @@ void Player::KillPlayer()
 
     // 6 minutes until repop at graveyard
     m_deathTimer = CORPSE_REPOP_TIME;
+    GetCheatData()->OnDeath();
 
     UpdateCorpseReclaimDelay();                             // dependent at use SetDeathPvP() call before kill
 
@@ -5213,7 +5223,7 @@ uint32 Player::DurabilityRepair(uint16 pos, bool cost, float discountMod)
             }
 
             uint32 dmultiplier = dcost->multiplier[ItemSubClassToDurabilityMultiplierId(ditemProto->Class, ditemProto->SubClass)];
-            uint32 costs = uint32(LostDurability * dmultiplier * double(dQualitymodEntry->quality_mod));
+            uint32 costs = uint32(LostDurability * dmultiplier * dQualitymodEntry->quality_mod);
 
             costs = uint32(costs * discountMod);
 
@@ -6325,10 +6335,11 @@ bool Player::SetPosition(float x, float y, float z, float orientation, bool tele
     float const old_y = GetPositionY();
     float const old_z = GetPositionZ();
     float const old_r = GetOrientation();
+    bool const positionChanged = teleport || old_x != x || old_y != y || old_z != z;
 
-    if (teleport || old_x != x || old_y != y || old_z != z || old_r != orientation)
+    if (positionChanged || old_r != orientation)
     {
-        if (teleport || old_x != x || old_y != y || old_z != z)
+        if (positionChanged)
             RemoveAurasWithInterruptFlags(AURA_INTERRUPT_MOVING_CANCELS | AURA_INTERRUPT_TURNING_CANCELS);
         else
             RemoveAurasWithInterruptFlags(AURA_INTERRUPT_TURNING_CANCELS);
@@ -6350,15 +6361,21 @@ bool Player::SetPosition(float x, float y, float z, float orientation, bool tele
 
         if (GetTrader() && !IsWithinDistInMap(GetTrader(), INTERACTION_DISTANCE))
             GetSession()->SendCancelTrade();   // will close both side trade windows
-    }
 
-    if (!m_areaCheckTimer && sWorld.getConfig(CONFIG_UINT32_RELOCATION_VMAP_CHECK_TIMER))
-        m_areaCheckTimer = sWorld.getConfig(CONFIG_UINT32_RELOCATION_VMAP_CHECK_TIMER);
-    else
-    {
-        UpdateTerainEnvironmentFlags();
-        CheckAreaExploreAndOutdoor();
-        LoadMapCellsAround(GetMap()->GetGridActivationDistance());
+        if (positionChanged)
+        {
+            if (uint32 const timerMax = sWorld.getConfig(CONFIG_UINT32_RELOCATION_VMAP_CHECK_TIMER))
+            {
+                if (!m_areaCheckTimer)
+                    m_areaCheckTimer = timerMax;
+            }
+            else
+            {
+                UpdateTerainEnvironmentFlags();
+                CheckAreaExploreAndOutdoor();
+                LoadMapCellsAround(GetMap()->GetGridActivationDistance());
+            }
+        }
     }
 
     return true;
@@ -6416,6 +6433,37 @@ void Player::SendCinematicStart(uint32 CinematicSequenceId)
     CinematicStart(CinematicSequenceId);
 }
 
+bool Player::IsOutdoorOnTransport() const
+{
+    if (!GetTransport()->IsMoTransport())
+        return true;
+
+    // According to original vanilla screenshots, it was only possible to mount on specific spots.
+    // There should probably be some kind of check using the model of the transport, but I dunno
+    // how that should work, so just hardcoding positions on which its known to be possible to mount.
+    switch (GetTransport()->GetDisplayId())
+    {
+        // Ship
+        case 3015:
+        {
+            if (Geometry::GetDistance3D(m_movementInfo.t_pos.x, m_movementInfo.t_pos.y, m_movementInfo.t_pos.z, 6.21f, 0.12f, 14.05f) < 1.1f ||
+                Geometry::GetDistance3D(m_movementInfo.t_pos.x, m_movementInfo.t_pos.y, m_movementInfo.t_pos.z, -10.46f, 6.62f, 17.77f) < 1.0f ||
+                Geometry::GetDistance3D(m_movementInfo.t_pos.x, m_movementInfo.t_pos.y, m_movementInfo.t_pos.z, 1.55f, -4.51f, 11.30f) < 0.5f)
+                return true;
+            break;
+        }
+        // Zeppelin
+        case 3031:
+        {
+            if (Geometry::GetDistance3D(m_movementInfo.t_pos.x, m_movementInfo.t_pos.y, m_movementInfo.t_pos.z, -21.77f, -7.90f, -13.27f) < 1.1f)
+                return true;
+            break;
+        }
+    }
+
+    return false;
+}
+
 void Player::CheckAreaExploreAndOutdoor()
 {
     if (!IsAlive())
@@ -6430,6 +6478,9 @@ void Player::CheckAreaExploreAndOutdoor()
 
     bool isOutdoor;
     uint16 areaFlag = GetTerrain()->GetAreaFlag(GetPositionX(), GetPositionY(), GetPositionZ(), &isOutdoor);
+
+    if (GetTransport())
+        isOutdoor = IsOutdoorOnTransport();
 
     if (isOutdoor)
     {
@@ -6881,6 +6932,7 @@ void Player::DismountCheck()
             {
                 RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
                 Unmount(true);
+                return;
             }
         }
     }
@@ -18924,13 +18976,6 @@ void RemoveBroadcastListener(Player* target, Player* me)
         target->m_broadcaster->RemoveListener(me);
 }
 
-// Only called if player is in combat and not in dungeon.
-void Player::BeforeVisibilityDestroy(Creature* creature)
-{
-    if (creature->IsInCombat() && IsInCombatWithCreature(creature))
-        GetHostileRefManager().deleteReference(creature);
-}
-
 template<class T>
 void Player::UpdateVisibilityOf(WorldObject const* viewPoint, T* target, UpdateData& data, std::set<WorldObject*>& visibleNow)
 {
@@ -18940,10 +18985,6 @@ void Player::UpdateVisibilityOf(WorldObject const* viewPoint, T* target, UpdateD
         if (!target->FindMap() || !target->isWithinVisibilityDistanceOf(this, viewPoint, inVisibleList) || !target->IsVisibleForInState(this, viewPoint, true))
         {
             ObjectGuid t_guid = target->GetObjectGuid();
-
-            // Make sure mobs who become out of range leave combat before grid unload.
-            if (target->IsCreature() && target->FindMap() && IsInCombat() && !GetMap()->IsDungeon())
-                BeforeVisibilityDestroy((Creature*)target);
 
             target->BuildOutOfRangeUpdateBlock(data);
             std::unique_lock<std::shared_timed_mutex> lock(m_visibleGUIDs_lock);
@@ -18976,6 +19017,35 @@ template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, Corpse*  
 template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, GameObject*    target, UpdateData& data, std::set<WorldObject*>& visibleNow);
 template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, DynamicObject* target, UpdateData& data, std::set<WorldObject*>& visibleNow);
 template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, WorldObject*   target, UpdateData& data, std::set<WorldObject*>& visibleNow);
+
+void Player::LeaveCombatWithFarAwayCreatures()
+{
+    HostileReference* pReference = GetHostileRefManager().getFirst();
+
+    while (pReference)
+    {
+        if (pReference->isValid())
+        {
+            if (Creature* pCreature = ::ToCreature(pReference->getSourceUnit()))
+            {
+                if (!pCreature->GetCharmerOrOwnerGuid().IsPlayer() &&
+                    !pCreature->isWithinVisibilityDistanceOf(this, this, IsInVisibleList_Unsafe(pCreature)))
+                {
+                    pReference = pReference->next();
+
+                    if (pCreature->CanHaveThreatList())
+                        pCreature->GetThreatManager().modifyThreatPercent(this, -101);
+                    else
+                        GetHostileRefManager().deleteReference(pCreature);
+
+                    continue;
+                }
+            }
+        }
+
+        pReference = pReference->next();
+    }
+}
 
 void Player::SetLongSight(Aura const* aura)
 {
@@ -20480,6 +20550,7 @@ void Player::_LoadSkills(QueryResult* result)
     // SetPQuery(PLAYER_LOGIN_QUERY_LOADSKILLS,          "SELECT skill, value, max FROM character_skills WHERE guid = '%u'", GUID_LOPART(m_guid));
 
     uint32 count = 0;
+    std::unordered_map<uint32, uint32> loadedSkillValues;
     if (result)
     {
         do
@@ -20513,6 +20584,9 @@ void Player::_LoadSkills(QueryResult* result)
                 case SKILL_RANGE_MONO:                          // 1..1, grey monolite bar
                     value = max = 1;
                     break;
+                case SKILL_RANGE_LEVEL:
+                    max = GetSkillMaxForLevel();
+                    break;
                 default:
                     break;
             }
@@ -20529,7 +20603,7 @@ void Player::_LoadSkills(QueryResult* result)
             SetUInt32Value(PLAYER_SKILL_BONUS_INDEX(count), 0);
 
             mSkillStatus.insert(SkillStatusMap::value_type(skill, SkillStatusData(count, SKILL_UNCHANGED)));
-            UpdateSkillTrainedSpells(skill, value);
+            loadedSkillValues[skill] = value;
 
             ++count;
 
@@ -20541,6 +20615,10 @@ void Player::_LoadSkills(QueryResult* result)
         }
         while (result->NextRow());
     }
+
+    // Learn skill rewarded spells after all skills have been loaded to prevent learning a skill from them before its loaded with proper value from DB
+    for (auto& skill : loadedSkillValues)
+        UpdateSkillTrainedSpells(skill.first, skill.second);
 
     for (; count < PLAYER_MAX_SKILLS; ++count)
     {
@@ -22188,21 +22266,6 @@ void Player::RemoveSpellLockout(SpellSchoolMask spellSchoolMask, std::set<uint32
 
         SendClearCooldown(spellEntry->Id, this);
     }
-}
-
-bool Player::IsInCombatWithCreature(Creature const* pCreature)
-{
-    HostileReference* pReference = GetHostileRefManager().getFirst();
-
-    while (pReference)
-    {
-        if (pReference->isValid() && pCreature == pReference->getSourceUnit())
-            return true;
-
-        pReference = pReference->next();
-    }
-
-    return false;
 }
 
 void Player::CastHighestStealthRank()
