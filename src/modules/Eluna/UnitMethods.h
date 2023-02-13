@@ -2584,7 +2584,17 @@ namespace LuaUnit
 #if defined TRINITY || AZEROTHCORE
         Eluna::Push(L, unit->AddAura(spell, target));
 #elif defined VMANGOS
-        Eluna::Push(L, unit->AddAura(spell, 0, target)); // TODO: 0 is magic number for "addAuraFlags"
+        SpellAuraHolder* spellAuraHolder = unit->AddAura(spell, 0, target);
+        Aura* aura = nullptr;
+        if (spellAuraHolder)
+        {
+            aura = spellAuraHolder->GetAuraByEffectIndex(SpellEffIndex(0));
+        }
+        else
+        {
+            aura = unit->GetAura(spell, SpellEffIndex(0));
+        }
+        Eluna::Push(L, aura); // TODO: 0 is magic number for "addAuraFlags"
 #else
         if (!IsSpellAppliesAura(spellEntry) && !IsSpellHaveEffect(spellEntry, SPELL_EFFECT_PERSISTENT_AREA_AURA))
             return 1;
