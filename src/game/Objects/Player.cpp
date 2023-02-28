@@ -3367,10 +3367,6 @@ void Player::GiveLevel(uint32 level)
     if (level == GetLevel())
         return;
 
-#ifdef ENABLE_ELUNA
-    sEluna->OnLevelChanged(this, level);
-#endif
-
     uint32 numInstanceMembers = 0;
     uint32 numGroupMembers = 0;
 
@@ -3527,6 +3523,11 @@ void Player::GiveLevel(uint32 level)
     // update level to hunter/summon pet
     if (Pet* pet = GetPet())
         pet->SynchronizeLevelWithOwner();
+
+#ifdef ENABLE_ELUNA
+    int oldLevel = GetLevel();
+    sEluna->OnLevelChanged(this, oldLevel);
+#endif
 }
 
 void Player::UpdateFreeTalentPoints(bool resetIfNeed)
