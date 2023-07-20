@@ -344,6 +344,10 @@ class Unit : public SpellCaster
 
         virtual ~Unit () override;
 
+#ifdef ENABLE_ELUNA
+        virtual void SetName(std::string const& newname) { }
+#endif
+
         void AddToWorld() override;
         void RemoveFromWorld() override;
         void CleanupsBeforeDelete() override;               // used in ~Creature/~Player (or before mass creature delete to remove cross-references to already deleted units)

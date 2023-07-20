@@ -22519,7 +22519,7 @@ static char const* type_strings[] =
     "GM",
     "GMCritical",
 #ifdef ENABLE_ELUNA
-    ,"ELUNA",
+    "ELUNA",
 #endif /* ENABLE_ELUNA */
     "Anticheat"
 };

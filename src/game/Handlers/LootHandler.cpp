@@ -699,7 +699,7 @@ void WorldSession::HandleLootMasterGiveOpcode(WorldPacket& recv_data)
 
     // Used by Eluna
 #ifdef ENABLE_ELUNA
-    	sEluna->OnLootItem(target, newitem, item.count, lootguid);
+    	sEluna->OnLootItem(target, newitem, item.count, lootGuid);
 #endif /* ENABLE_ELUNA */
 
     }

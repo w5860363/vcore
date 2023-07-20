@@ -3256,7 +3256,7 @@ namespace LuaPlayer
 #ifdef TRINITY
         player->Whisper(text, (Language)lang, receiver);
 #else
-        player->Whisper(text, lang, ObjectGuid(guid));
+        player->Whisper(text.c_str(), lang, ObjectGuid(guid));
 #endif
         return 0;
     }
@@ -3270,7 +3270,7 @@ namespace LuaPlayer
     {
         std::string text = Eluna::CHECKVAL<std::string>(L, 2);
 
-        player->TextEmote(text);
+        player->TextEmote(text.c_str());
         return 0;
     }
 
@@ -3287,7 +3287,7 @@ namespace LuaPlayer
 #ifdef TRINITY
         player->Yell(text, (Language)lang);
 #else
-        player->Yell(text, lang);
+        player->Yell(text.c_str(), lang);
 #endif
         return 0;
     }
@@ -3305,7 +3305,7 @@ namespace LuaPlayer
 #ifdef TRINITY
         player->Say(text, (Language)lang);
 #else
-        player->Say(text, lang);
+        player->Say(text.c_str(), lang);
 #endif
         return 0;
     }

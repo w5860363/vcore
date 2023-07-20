@@ -62,7 +62,7 @@ void WorldSession::HandleGuildCreateOpcode(WorldPacket& recvPacket)
 
     sGuildMgr.AddGuild(guild);
 }
-
+#ifdef ENABLE_ELUNA
 void WorldSession::SendGuildInvite(Player* player, bool /*alreadyInGuild*/ /*= false*/)
 {
     Guild* guild = sGuildMgr.GetGuildById(GetPlayer()->GetGuildId());
@@ -73,6 +73,7 @@ void WorldSession::SendGuildInvite(Player* player, bool /*alreadyInGuild*/ /*= f
     data << guild->GetName();
     player->GetSession()->SendPacket(&data);                                  // unk
 }
+#endif /* ENABLE_ELUNA */
 
 void WorldSession::HandleGuildInviteOpcode(WorldPacket& recvPacket)
 {

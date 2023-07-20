@@ -241,6 +241,9 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
     char* msg = nullptr;
     size_t msgLen = 0;
     std::string channel, to;
+#ifdef ENABLE_ELUNA
+    std::string msg_str;
+#endif /* ENABLE_ELUNA */
     
     // Message parsing
     switch (type)
@@ -393,8 +396,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                 return;
 
 #ifdef ENABLE_ELUNA
-            if (!sEluna->OnChat(GetPlayer(), type, lang, msg))
+            msg_str = std::string(msg);
+            if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str))
                 return;
+            msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
 
             GetPlayer()->Say(msg, lang);
@@ -420,8 +425,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                 return;
 
 #ifdef ENABLE_ELUNA
-            if (!sEluna->OnChat(GetPlayer(), type, LANG_UNIVERSAL, msg))
+            msg_str = std::string(msg);
+            if (!sEluna->OnChat(GetPlayer(), type, LANG_UNIVERSAL, msg_str))
                 return;
+            msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
 
             GetPlayer()->TextEmote(msg);
@@ -448,8 +455,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                 return;
 
 #ifdef ENABLE_ELUNA
-            if (!sEluna->OnChat(GetPlayer(), type, lang, msg))
+            msg_str = std::string(msg);
+            if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str))
                 return;
+            msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
 
             GetPlayer()->Yell(msg, lang);
@@ -521,8 +530,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                 {
                     // Used by Eluna
 #ifdef ENABLE_ELUNA
-                    if (!sEluna->OnChat(masterPlr->GetSession()->GetPlayer(), type, lang, msg, toPlayer))
+                    msg_str = std::string(msg);
+                    if (!sEluna->OnChat(masterPlr->GetSession()->GetPlayer(), type, lang, msg_str, toPlayer))
                         return;
+                    msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
                     masterPlr->Whisper(msg, lang, player);
                 }
@@ -556,8 +567,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
             // Used by Eluna
 #ifdef ENABLE_ELUNA
-            if (!sEluna->OnChat(GetPlayer(), type, lang, msg, group))
+            msg_str = std::string(msg);
+            if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str, group))
                 return;
+            msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
 
             WorldPacket data;
@@ -574,8 +587,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 				{
 					// Used by Eluna
 #ifdef ENABLE_ELUNA
-					if (!sEluna->OnChat(GetPlayer(), type, lang, msg, guild))
+                    msg_str = std::string(msg);
+					if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str, guild))
 						return;
+                    msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
 					guild->BroadcastToGuild(this, msg, lang == LANG_ADDON ? LANG_ADDON : LANG_UNIVERSAL);
 				}
@@ -591,8 +606,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 		{
                     // Used by Eluna
 #ifdef ENABLE_ELUNA
-                    if (!sEluna->OnChat(GetPlayer(), type, lang, msg, guild))
+                    msg_str = std::string(msg);
+                    if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str, guild))
                         return;
+                    msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
                     guild->BroadcastToOfficers(this, msg, lang == LANG_ADDON ? LANG_ADDON : LANG_UNIVERSAL);
 		}
@@ -618,8 +635,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
             // Used by Eluna
 #ifdef ENABLE_ELUNA
-            if (!sEluna->OnChat(GetPlayer(), type, lang, msg, group))
+            msg_str = std::string(msg);
+            if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str, group))
                 return;
+            msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
 
             WorldPacket data;
@@ -648,8 +667,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
             // Used by Eluna
 #ifdef ENABLE_ELUNA
-            if (!sEluna->OnChat(GetPlayer(), type, lang, msg, group))
+            msg_str = std::string(msg);
+            if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str, group))
                 return;
+            msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
 
             WorldPacket data;
@@ -669,8 +690,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
             // Used by Eluna
 #ifdef ENABLE_ELUNA
-            if (!sEluna->OnChat(GetPlayer(), type, lang, msg, group))
+            msg_str = std::string(msg);
+            if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str, group))
                 return;
+            msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
 
             WorldPacket data;
@@ -694,8 +717,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
             // Used by Eluna
 #ifdef ENABLE_ELUNA
-            if (!sEluna->OnChat(GetPlayer(), type, lang, msg, group))
+            msg_str = std::string(msg);
+            if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str, group))
                 return;
+            msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
 
             WorldPacket data;
@@ -717,8 +742,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
             // Used by Eluna
 #ifdef ENABLE_ELUNA
-            if (!sEluna->OnChat(GetPlayer(), type, lang, msg, group))
+            msg_str = std::string(msg);
+            if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str, group))
                 return;
+            msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
 
             WorldPacket data;
@@ -751,8 +778,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
                 // Used by Eluna
 #ifdef ENABLE_ELUNA
-            if (!sEluna->OnChat(GetPlayer(), type, lang, msg))
+            msg_str = std::string(msg);
+            if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str))
                 return;
+            msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
 
         }
@@ -776,8 +805,10 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             }
             // Used by Eluna
 #ifdef ENABLE_ELUNA
-            if (!sEluna->OnChat(GetPlayer(), type, lang, msg))
+            msg_str = std::string(msg);
+            if (!sEluna->OnChat(GetPlayer(), type, lang, msg_str))
                 return;
+            msg = &msg_str[0];
 #endif /* ENABLE_ELUNA */
         }
 
@@ -799,10 +830,16 @@ void WorldSession::HandleEmoteOpcode(WorldPacket& recv_data)
 
     uint32 emote;
     recv_data >> emote;
+
+    // restrict to the only emotes hardcoded in client
+    if (emote != EMOTE_ONESHOT_NONE && emote != EMOTE_ONESHOT_WAVE)
+        return;
+
     // Used by Eluna
 #ifdef ENABLE_ELUNA
     sEluna->OnEmote(GetPlayer(), emote);
 #endif /* ENABLE_ELUNA */
+
     GetPlayer()->InterruptSpellsWithChannelFlags(AURA_INTERRUPT_ANIM_CANCELS);
     GetPlayer()->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_ANIM_CANCELS);
     GetPlayer()->HandleEmoteCommand(emote);
