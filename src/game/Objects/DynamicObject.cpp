@@ -39,7 +39,7 @@ DynamicObject::DynamicObject() : WorldObject(), m_spellId(0), m_effIndex(EFFECT_
 
 void DynamicObject::AddToWorld()
 {
-    ///- Register the dynamicObject for guid lookup
+    // Register the dynamicObject for guid lookup
     if (!IsInWorld())
         GetMap()->InsertObject<DynamicObject>(GetObjectGuid(), this);
 
@@ -48,7 +48,7 @@ void DynamicObject::AddToWorld()
 
 void DynamicObject::RemoveFromWorld()
 {
-    ///- Remove the dynamicObject from the accessor
+    // Remove the dynamicObject from the accessor
     if (IsInWorld())
     {
         GetMap()->EraseObject<DynamicObject>(GetObjectGuid());
@@ -117,6 +117,9 @@ bool DynamicObject::Create(uint32 guidlow, WorldObject* caster, uint32 spellId, 
     m_spellId = spellId;
     m_positive = spellProto->IsPositiveEffect(m_effIndex);
     m_channeled = spellProto->IsChanneledSpell();
+
+    if (type == DYNAMIC_OBJECT_FARSIGHT_FOCUS)
+        m_isActiveObject = true;
 
     return true;
 }

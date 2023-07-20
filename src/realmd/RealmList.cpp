@@ -27,6 +27,7 @@
 #include "RealmList.h"
 #include "AuthCodes.h"
 #include "Util.h"                                           // for Tokens typedef
+#include "Log.h"
 #include "Policies/SingletonImp.h"
 #include "Database/DatabaseEnv.h"
 
@@ -48,15 +49,15 @@ std::vector<RealmBuildInfo const*> FindBuildInfo(uint16 build, uint32 os, uint32
     return matchingBuilds;
 }
 
-RealmBuildInfo const* FindBuildInfo(uint16 _build)
+RealmBuildInfo const* FindBuildInfo(uint16 build)
 {
     // first build is low bound of always accepted range
-    if (_build >= ExpectedRealmdClientBuilds[0].build)
+    if (build >= ExpectedRealmdClientBuilds[0].build)
         return &ExpectedRealmdClientBuilds[0];
 
     // continue from 1 with explicit equal check
-    for (int i = 1; ExpectedRealmdClientBuilds[i].build; ++i)
-        if (_build == ExpectedRealmdClientBuilds[i].build)
+    for (int i = 1; i < ExpectedRealmdClientBuilds.size(); ++i)
+        if (build == ExpectedRealmdClientBuilds[i].build)
             return &ExpectedRealmdClientBuilds[i];
 
     // none appropriate build
@@ -73,20 +74,20 @@ RealmList& sRealmList
     return realmlist;
 }
 
-/// Load the realm list from the database
+// Load the realm list from the database
 void RealmList::Initialize(uint32 updateInterval)
 {
     m_UpdateInterval = updateInterval;
 
     LoadAllowedClients();
 
-    ///- Get the content of the realmlist table in the database
+    // Get the content of the realmlist table in the database
     UpdateRealms(true);
 }
 
 void RealmList::UpdateRealm( uint32 ID, const std::string& name, const std::string& address, uint32 port, uint8 icon, RealmFlags realmflags, uint8 timezone, AccountTypes allowedSecurityLevel, float popu, const std::string& builds)
 {
-    ///- Create new if not exist or update existed
+    // Create new if not exist or update existed
     Realm& realm = m_realms[name];
 
     realm.m_ID       = ID;
@@ -118,7 +119,7 @@ void RealmList::UpdateRealm( uint32 ID, const std::string& name, const std::stri
             if (bInfo->build == first_build)
                 realm.realmBuildInfo = *bInfo;
 
-    ///- Append port to IP address.
+    // Append port to IP address.
     std::ostringstream ss;
     ss << address << ":" << port;
     realm.address   = ss.str();
@@ -150,7 +151,7 @@ void RealmList::UpdateRealms(bool init)
         "`allowedSecurityLevel`, `population`, `realmbuilds` FROM `realmlist` "
         "WHERE (`realmflags` & 1) = 0 ORDER BY `name`");
 
-    ///- Circle through results and add them to the realm map
+    // Circle through results and add them to the realm map
     if(result)
     {
         do
@@ -189,7 +190,6 @@ void RealmList::LoadAllowedClients()
         "SELECT `major_version`, `minor_version`, `bugfix_version`, `hotfix_version`, `build`, `os`, `platform`, `integrity_hash` "
         "FROM `allowed_clients`");
 
-    ///- Circle through results and add them to the realm map
     if (result)
     {
         do
