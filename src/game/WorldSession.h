@@ -284,22 +284,7 @@ class WorldSession
         uint32 GetGUID() const { return m_guid; }
         AccountTypes GetSecurity() const { return m_security; }
         uint32 GetAccountId() const { return m_accountId; }
-        bool PlayerLoading() const { return m_playerLoading; }
-        bool PlayerLogout() const { return m_playerLogout; }
-        bool PlayerLogoutWithSave() const { return m_playerLogout && m_playerSave; }
-
-        bool CharacterScreenIdleKick(uint32 diff);
-
-        void SizeError(WorldPacket const& packet, uint32 size) const;
-
-        void SendPacket(WorldPacket const* packet);
-        void SendNotification(char const* format,...) ATTR_PRINTF(2,3);
-        void SendNotification(int32 string_id,...);
-        void SendPetNameInvalid(uint32 error, std::string const& name);
-        void SendPartyResult(PartyOperation operation, std::string const& member, PartyResult res);
-        void SendGuildInvite(Player* player, bool alreadyInGuild = false);
-        void SendAreaTriggerMessage(char const* Text, ...) ATTR_PRINTF(2,3);
-        void SendQueryTimeResponse();        std::string GetUsername() const { return m_username; }
+        std::string GetUsername() const { return m_username; }
         void SetUsername(std::string const& s) { m_username = s; }
         uint32 GetLatency() const { return m_latency; }
         void SetLatency(uint32 latency) { m_latency = latency; }
@@ -331,6 +316,11 @@ class WorldSession
         bool IsConnected() const { return m_connected; }
         void KickDisconnectedFromWorld() { m_disconnectTimer = 0; }
 
+        bool PlayerLoading() const { return m_playerLoading; }
+        bool PlayerLogout() const { return m_playerLogout; }
+        bool PlayerLogoutWithSave() const { return m_playerLogout && m_playerSave; }
+
+        bool CharacterScreenIdleKick(uint32 diff);
         uint32 m_idleTime;
 
         // Played time limit

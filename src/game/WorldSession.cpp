@@ -716,7 +716,6 @@ void WorldSession::LogoutPlayer(bool Save)
         // Update cached data at logout
         sObjectMgr.UpdatePlayerCache(_player);
 
-
         // No need to create any new maps
         sMapMgr.CancelInstanceCreationForPlayer(_player);
 

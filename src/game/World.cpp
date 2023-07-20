@@ -1412,7 +1412,6 @@ void World::SetInitialWorldSettings()
 #endif
 
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Loading Broadcast Texts...");
-
     sObjectMgr.LoadBroadcastTexts();
 
     sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Loading Page Texts...");
@@ -1850,7 +1849,6 @@ void World::SetInitialWorldSettings()
         sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "Restoring deleted items to players ...");
         sObjectMgr.RestoreDeletedItems();
     }
-
 
     if (GetWowPatch() >= WOW_PATCH_103 || !getConfig(CONFIG_BOOL_ACCURATE_LFG))
     {
