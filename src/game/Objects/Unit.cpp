@@ -1062,9 +1062,16 @@ void Unit::Kill(Unit* pVictim, SpellEntry const* spellProto, bool durabilityLoss
 
     // Used by Eluna
 #ifdef ENABLE_ELUNA
-    if(pPlayerVictim && pPlayerTap && pPlayerTap != pPlayerVictim)
+    if(pPlayerVictim && pPlayerTap)
     {
-        sEluna->OnPVPKill(pPlayerTap, pPlayerVictim);
+        if( pPlayerTap != pPlayerVictim )
+        {
+            sEluna->OnPVPKill(pPlayerTap, pPlayerVictim);
+        }
+        else
+        {
+            sEluna->OnKillSelf(pPlayerVictim);
+        }
     }else if(pCreatureVictim && pPlayerTap)
     {
         sEluna->OnCreatureKill(pPlayerTap, pCreatureVictim);
