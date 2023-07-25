@@ -433,6 +433,7 @@ public:
     void OnPlayerLeaveCombat(Player* pPlayer);
     void OnPVPKill(Player* pKiller, Player* pKilled);
     void OnCreatureKill(Player* pKiller, Creature* pKilled);
+    void OnKillSelf(Player* pKilled);
     void OnPlayerKilledByCreature(Creature* pKiller, Player* pKilled);
     void OnLevelChanged(Player* pPlayer, uint8 oldLevel);
     void OnFreeTalentPointsChanged(Player* pPlayer, uint32 newPoints);

@@ -21,8 +21,9 @@
 
 #include "Database/Database.h"
 #include "Database/SqlOperations.h"
+#include "Log.h"
 
-/// Function body definitions for the template function members of the Database class
+// Function body definitions for the template function members of the Database class
 
 #define ASYNC_QUERY_BODY(sql) if (!sql || !m_pResultQueue) return false;
 #define ASYNC_DELAYHOLDER_BODY(holder) if (!holder || !m_pResultQueue) return false;

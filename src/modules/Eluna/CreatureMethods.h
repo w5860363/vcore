@@ -1282,7 +1282,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
 #if defined TRINITY || AZEROTHCORE
         creature->UpdateEntry(entry, dataGuidLow ? eObjectMgr->GetCreatureData(dataGuidLow) : NULL);
 #else
-        creature->UpdateEntry(entry, dataGuidLow ? eObjectMgr->GetCreatureData(dataGuidLow) : NULL);
+        creature->UpdateEntry(entry, dataGuidLow ? eGameEventMgr->GetCreatureUpdateDataForActiveEvent( dataGuidLow ) : NULL);
 #endif
         return 0;
     }

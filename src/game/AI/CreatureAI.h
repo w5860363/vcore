@@ -27,6 +27,7 @@
 #include "Dynamic/FactoryHolder.h"
 #include "ObjectGuid.h"
 #include "CreatureDefines.h"
+#include "SpellDefines.h"
 
 class WorldObject;
 class GameObject;
@@ -38,18 +39,7 @@ class SpellEntry;
 class ChatHandler;
 struct Loot;
 
-enum CanCastResult
-{
-    CAST_OK                     = 0,
-    CAST_FAIL_IS_CASTING        = 1,
-    CAST_FAIL_OTHER             = 2,
-    CAST_FAIL_TOO_FAR           = 3,
-    CAST_FAIL_TOO_CLOSE         = 4,
-    CAST_FAIL_POWER             = 5,
-    CAST_FAIL_STATE             = 6,
-    CAST_FAIL_TARGET_AURA       = 7,
-    CAST_FAIL_NOT_IN_LOS        = 8
-};
+#define CAST_OK SPELL_CAST_OK
 
 struct CreatureAISpellsEntry : CreatureSpellsEntry
 {
@@ -64,13 +54,13 @@ class CreatureAI
 
         virtual ~CreatureAI();
 
-        ///== Information about AI ========================
+        // == Information about AI ========================
 
         virtual void GetAIInformation(ChatHandler& /*reader*/) {}
 
         virtual uint32 GetData(uint32 /*type*/) { return 0; }
 
-        ///== Reactions At =================================
+        // == Reactions At =================================
 
         // Called when an unit moves within visibility distance
         virtual void MoveInLineOfSight(Unit*) {}
@@ -156,7 +146,7 @@ class CreatureAI
         // called when the corpse of this creature gets removed
         virtual void CorpseRemoved(uint32& /*respawnDelay*/) {}
 
-        ///== Triggered Actions Requested ==================
+        // == Triggered Actions Requested ==================
 
         // Called when creature attack expected (if creature can and no have current victim)
         // Note: for reaction at hostile action must be called AttackedBy function.
@@ -169,12 +159,12 @@ class CreatureAI
         virtual void UpdateAI_corpse(uint32 const /*uiDiff*/) {}
 
         // Triggers an alert when a Unit moves near stealth detection range.
-        virtual void TriggerAlert(Unit const* who);
+        virtual void OnMoveInStealth(Unit* who);
 
         // Will auto attack if the swing timer is ready.
         bool DoMeleeAttackIfReady();
         
-        ///== State checks =================================
+        // == State checks =================================
 
         // Is corpse looting allowed ?
         virtual bool CanBeLooted() const { return true; }
@@ -188,13 +178,10 @@ class CreatureAI
         // Does the creature melee attack.
         bool IsMeleeAttackEnabled() const { return m_bMeleeAttack; }
 
-        ///== Helper functions =============================
+        // == Helper functions =============================
 
         // Attempts to cast a spell and returns the result.
-        CanCastResult DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32 uiCastFlags = 0, ObjectGuid uiOriginalCasterGUID = ObjectGuid());
-
-        // Helper functions for cast spell
-        virtual CanCastResult CanCastSpell(Unit* pTarget, SpellEntry const* pSpell, bool isTriggered);
+        SpellCastResult DoCastSpellIfCan(Unit* pTarget, uint32 uiSpell, uint32 uiCastFlags = 0);
 
         // TrinityCore
         void DoCast(Unit* victim, uint32 spellId, bool triggered = false);
@@ -222,7 +209,9 @@ class CreatureAI
         bool SwitchAiAtControl() const { return !m_bUseAiAtControl; }
         void SetUseAiAtControl(bool v) { m_bUseAiAtControl = v; }
     protected:
-        ///== Fields =======================================
+        bool CanTriggerAlert(Unit const* who);
+        void TriggerAlertDirect(Unit const* who);
+        // == Fields =======================================
         bool   m_bUseAiAtControl;
         bool   m_bMeleeAttack;                                  // If we allow melee auto attack
         bool   m_bCombatMovement;                               // If we allow targeted movement gen (chasing target)
