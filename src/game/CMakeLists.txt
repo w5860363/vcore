@@ -562,7 +562,12 @@ source_group("Anticheat"
 )
 
 if(SCRIPT_LIB_ELUNA)
-    file(GLOB SRC_GRP_ELUNA ${CMAKE_SOURCE_DIR}/src/modules/Eluna/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Eluna/*.h)
+    file(GLOB SRC_GRP_ELUNA 
+        ${CMAKE_SOURCE_DIR}/src/modules/Eluna/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/modules/Eluna/*.h
+        ${CMAKE_SOURCE_DIR}/src/modules/Eluna/VMangos/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/modules/Eluna/VMangos/*.h
+    )
     source_group("Eluna" FILES ${SRC_GRP_ELUNA})
 endif()
 add_library(game STATIC
@@ -585,7 +590,10 @@ target_compile_definitions(game
 )
 target_include_directories(game
     PUBLIC
-      $<$<BOOL:${SCRIPT_LIB_ELUNA}>:${CMAKE_SOURCE_DIR}/src/modules/Eluna>
+      $<$<BOOL:${SCRIPT_LIB_ELUNA}>:
+            ${CMAKE_SOURCE_DIR}/src/modules/Eluna
+            ${CMAKE_SOURCE_DIR}/src/modules/Eluna/VMangos
+        >
 )
 
 #add_dependencies(game revision.h)

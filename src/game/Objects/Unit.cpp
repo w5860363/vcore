@@ -1068,10 +1068,10 @@ void Unit::Kill(Unit* pVictim, SpellEntry const* spellProto, bool durabilityLoss
         {
             sEluna->OnPVPKill(pPlayerTap, pPlayerVictim);
         }
-        else
-        {
-            sEluna->OnKillSelf(pPlayerVictim);
-        }
+        //else
+        //{
+            //sEluna->OnKillSelf(pPlayerVictim);
+        //}
     }else if(pCreatureVictim && pPlayerTap)
     {
         sEluna->OnCreatureKill(pPlayerTap, pCreatureVictim);
