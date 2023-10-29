@@ -2117,12 +2117,11 @@ bool ScriptMgr::OnEffectDummy(WorldObject* pCaster, uint32 spellId, SpellEffectI
 {
     Script* pTempScript = m_scripts[pTarget->GetGOInfo()->ScriptId];
 
+#ifdef ENABLE_ELUNA
+    sEluna->OnDummyEffect(pCaster, spellId, effIndex, pTarget);
+#endif /* ENABLE_ELUNA */
     if (!pTempScript || !pTempScript->pEffectDummyGameObj)
     {
-#ifdef ENABLE_ELUNA
-        if (sEluna->OnDummyEffect(pCaster, spellId, effIndex, pTarget))
-            return true;
-#endif /* ENABLE_ELUNA */
         return false;
     }
     return pTempScript->pEffectDummyGameObj(pCaster, spellId, effIndex, pTarget);
