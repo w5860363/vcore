@@ -1182,14 +1182,6 @@ void Unit::Kill(Unit* pVictim, SpellEntry const* spellProto, bool durabilityLoss
             // durability lost message
             WorldPacket data(SMSG_DURABILITY_DAMAGE_DEATH, 0);
             pPlayerVictim->GetSession()->SendPacket(&data);
-
-            // Used by Eluna
-#ifdef ENABLE_ELUNA
-        if (Creature* killer = ToCreature())
-            {
-            sEluna->OnPlayerKilledByCreature(killer, pPlayerVictim);
-            }
-#endif /* ENABLE_ELUNA */
         }
     }
     else                                                // creature died
@@ -1274,6 +1266,15 @@ void Unit::Kill(Unit* pVictim, SpellEntry const* spellProto, bool durabilityLoss
     }
 
     pVictim->InterruptSpellsCastedOnMe(false, true);
+    
+    // Used by Eluna
+#ifdef ENABLE_ELUNA
+    if (Creature* killer = ToCreature())
+    {
+        if(pPlayerVictim)
+            sEluna->OnPlayerKilledByCreature(killer, pPlayerVictim);
+    }
+#endif /* ENABLE_ELUNA */
 }
 
 struct PetOwnerKilledUnitHelper
