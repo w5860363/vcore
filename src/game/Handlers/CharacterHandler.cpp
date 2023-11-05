@@ -307,7 +307,7 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
 
     if (!AllowTwoSideAccounts)
     {
-        std::list<PlayerCacheData const*> characters;
+        std::vector<PlayerCacheData const*> characters;
         sObjectMgr.GetPlayerDataForAccount(GetAccountId(), characters);
 
         if (!characters.empty())
@@ -577,7 +577,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
     SendPacket(&data);
 
     // load player specific part before send times
-    LoadAccountData(holder->GetResult(PLAYER_LOGIN_QUERY_LOADACCOUNTDATA), PER_CHARACTER_CACHE_MASK);
+    LoadAccountData(holder->GetResult(PLAYER_LOGIN_QUERY_LOADACCOUNTDATA), NewAccountData::PER_CHARACTER_CACHE_MASK);
     SendAccountDataTimes();
 
     pCurrChar->GetSocial()->SendFriendList();
@@ -766,8 +766,8 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
         pCurrChar->SetStandState(UNIT_STAND_STATE_STAND);
 
     m_playerLoading = false;
-    m_clientMoverGuid = pCurrChar->GetObjectGuid();
     delete holder;
+
     if (alreadyOnline)
     {
         pCurrChar->UpdateControl();

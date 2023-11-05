@@ -109,7 +109,7 @@ GameObject::~GameObject()
     delete i_AI;
     delete m_model;
 
-    MANGOS_ASSERT(m_dynObjGUIDs.empty());
+    MANGOS_ASSERT(m_spellDynObjects.empty());
 }
 
 GameObject* GameObject::CreateGameObject(uint32 entry)
@@ -756,7 +756,7 @@ void GameObject::Refresh()
 
 void GameObject::AddUniqueUse(Player* player)
 {
-    std::unique_lock<std::mutex> guard(m_UniqueUsers_lock);
+    std::unique_lock<std::shared_timed_mutex> guard(m_UniqueUsers_lock);
 
     AddUse();
 
@@ -791,7 +791,7 @@ void GameObject::AddUniqueUse(Player* player)
 
 void GameObject::RemoveUniqueUse(Player* player)
 {
-    const std::lock_guard<std::mutex> guard(m_UniqueUsers_lock);
+    const std::lock_guard<std::shared_timed_mutex> guard(m_UniqueUsers_lock);
 
     auto itr = m_UniqueUsers.find(player->GetObjectGuid());
     if (itr == m_UniqueUsers.end())
@@ -820,7 +820,7 @@ void GameObject::RemoveUniqueUse(Player* player)
 
 void GameObject::FinishRitual()
 {
-    std::unique_lock<std::mutex> guard(m_UniqueUsers_lock);
+    std::unique_lock<std::shared_timed_mutex> guard(m_UniqueUsers_lock);
 
     if (GameObjectInfo const* info = GetGOInfo())
     {
@@ -850,13 +850,13 @@ void GameObject::FinishRitual()
 
 bool GameObject::HasUniqueUser(Player* player)
 {
-    const std::lock_guard<std::mutex> guard(m_UniqueUsers_lock);
+    const std::shared_lock<std::shared_timed_mutex> guard(m_UniqueUsers_lock);
     return m_UniqueUsers.find(player->GetObjectGuid()) != m_UniqueUsers.end();
 }
 
 uint32 GameObject::GetUniqueUseCount()
 {
-    const std::lock_guard<std::mutex> guard(m_UniqueUsers_lock);
+    const std::shared_lock<std::shared_timed_mutex> guard(m_UniqueUsers_lock);
     return m_UniqueUsers.size();
 }
 

@@ -97,7 +97,7 @@ pEffect SpellEffects[TOTAL_SPELL_EFFECTS] =
     &Spell::EffectLearnSpell,                               // 36 SPELL_EFFECT_LEARN_SPELL
     &Spell::EffectEmpty,                                    // 37 SPELL_EFFECT_SPELL_DEFENSE            one spell: SPELLDEFENSE (DND)
     &Spell::EffectDispel,                                   // 38 SPELL_EFFECT_DISPEL
-    &Spell::EffectEmpty,                                    // 39 SPELL_EFFECT_LANGUAGE                 misc store lang id
+    &Spell::EffectLanguage,                                 // 39 SPELL_EFFECT_LANGUAGE                 misc store lang id
     &Spell::EffectDualWield,                                // 40 SPELL_EFFECT_DUAL_WIELD
     &Spell::EffectSummonWild,                               // 41 SPELL_EFFECT_SUMMON_WILD
     &Spell::EffectSummonGuardian,                           // 42 SPELL_EFFECT_SUMMON_GUARDIAN
@@ -1165,15 +1165,26 @@ void Spell::EffectDummy(SpellEffectIndex effIdx)
                     if (unitTarget->GetTypeId() != TYPEID_PLAYER)
                         return;
 
-                    // Need remove self if Lightning Shield not active
-                    Unit::SpellAuraHolderMap const& auras = unitTarget->GetSpellAuraHolderMap();
-                    for (const auto& aura : auras)
+                    if (!m_triggeredBySpellInfo)
+                        return;
+
+                    switch (m_triggeredBySpellInfo->Id)
                     {
-                        SpellEntry const* spell = aura.second->GetSpellProto();
-                        if (spell->IsFitToFamily<SPELLFAMILY_SHAMAN, CF_SHAMAN_LIGHTNING_SHIELD>())
-                            return;
+                        case 28820: // Shaman T3 8-Piece Bonus
+                        {
+                            // Need remove self if Lightning Shield not active
+                            Unit::SpellAuraHolderMap const& auras = unitTarget->GetSpellAuraHolderMap();
+                            for (const auto& aura : auras)
+                            {
+                                SpellEntry const* spell = aura.second->GetSpellProto();
+                                if (spell->IsFitToFamily<SPELLFAMILY_SHAMAN, CF_SHAMAN_LIGHTNING_SHIELD>())
+                                    return;
+                            }
+                            unitTarget->RemoveAurasDueToSpell(28820);
+                            break;
+                        }
                     }
-                    unitTarget->RemoveAurasDueToSpell(28820);
+                    
                     return;
                 }
                 case 19411:                                 // Lava Bomb
@@ -1837,9 +1848,6 @@ void Spell::EffectDummy(SpellEffectIndex effIdx)
                         case 19266:
                             spellId = 19254;
                             break; // Rank 6
-                        case 25461:
-                            spellId = 25460;
-                            break; // Rank 7
                         default:
                             sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "Spell::EffectDummy: Spell 28598 triggered by unhandeled spell %u", m_triggeredByAuraSpell->Id);
                             return;
@@ -3182,8 +3190,8 @@ void Spell::EffectDispel(SpellEffectIndex effIdx)
     // Ok if exist some buffs for dispel try dispel it
     if (!dispelList.empty())
     {
-        std::list<std::pair<SpellAuraHolder*, uint32> > successList; // (spellId,casterGuid)
-        std::list < uint32 > failList; // spellId
+        std::vector<std::pair<SpellAuraHolder*, uint32> > successList; // (spellId,casterGuid)
+        std::vector < uint32 > failList; // spellId
 
         // some spells have effect value = 0 and all from its by meaning expect 1
         if (!damage)
@@ -3305,6 +3313,15 @@ void Spell::EffectDispel(SpellEffectIndex effIdx)
     }
 
     AddExecuteLogInfo(effIdx, ExecuteLogInfo(unitTarget->GetObjectGuid()));
+}
+
+void Spell::EffectLanguage(SpellEffectIndex effIdx)
+{
+    Player* pPlayer = ToPlayer(unitTarget);
+    if (!pPlayer)
+        return;
+
+    pPlayer->LearnLanguage(m_spellInfo->EffectMiscValue[effIdx]);
 }
 
 void Spell::EffectDualWield(SpellEffectIndex /*effIdx*/)
@@ -5241,12 +5258,16 @@ void Spell::EffectScriptEffect(SpellEffectIndex effIdx)
                     }
                     return;
                 }
-                case 29710:
+                case 28732: // Naxxramas Worshipper - Widow's Embrace
+                {
+                    if (m_casterUnit && m_casterUnit->IsAlive())
+                        m_casterUnit->Kill(m_casterUnit, nullptr);
+                    return;
+                }
+                case 29710: // Test Ribbon Pole Channel Trigger
                 {
                     if (Player* pPlayerTarget = ToPlayer(unitTarget))
-                    {
                         pPlayerTarget->CastSpell(pPlayerTarget, PickRandomValue(29705, 29726, 29727), false);
-                    }
                     return;
                 }
                 case 30882: // EPL PvP A Game of Towers: Tower Capture Test (DND)
@@ -5269,7 +5290,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex effIdx)
                 {
                     if (Player* pTarget = ToPlayer(unitTarget))
                         pTarget->CastSpell(pTarget, 32061, true);
-
                     return;
                 }
             }
@@ -6484,7 +6504,12 @@ void Spell::EffectDispelMechanic(SpellEffectIndex effIdx)
         next = iter;
         ++next;
         SpellEntry const* spell = iter->second->GetSpellProto();
-        if (iter->second->HasMechanic(mechanic))
+
+        // World of Warcraft Client Patch 1.7.0 (2005-09-13)
+        // - Escape Artist works with Frost Nova and Frost Trap again.
+        if (iter->second->HasMechanic(mechanic) &&
+            // attribute removed from Frost Nova in 1.7, which likely means this effect ignores it
+           !spell->HasAttribute(SPELL_ATTR_NO_AURA_CANCEL))
         {
             unitTarget->RemoveAurasDueToSpell(spell->Id);
             if (Auras.empty())
