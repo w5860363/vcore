@@ -910,6 +910,7 @@ class ChatHandler
         bool HandleGocorpseCommand(char* args);
         bool HandleRecallCommand(char* args);
         bool HandleAnnounceCommand(char* args);
+        bool HandleWorldCast(char* args); // ¿ΩÁ¡ƒÃÏ
         bool HandleNotifyCommand(char* args);
         bool HandleGPSCommand(char* args);
         bool HandleTaxiCheatCommand(char* args);

@@ -1208,6 +1208,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "unaura",         SEC_GAMEMASTER,     false, &ChatHandler::HandleUnAuraCommand,              "", nullptr },
         { "announce",       SEC_BASIC_ADMIN,    true,  &ChatHandler::HandleAnnounceCommand,            "", nullptr },
         { "notify",         SEC_BASIC_ADMIN,    true,  &ChatHandler::HandleNotifyCommand,              "", nullptr },
+        { "sj",             SEC_PLAYER,         true,  &ChatHandler::HandleWorldCast,                  "", nullptr }, //// ¿ΩÁ¡ƒÃÏ
         { "goname",         SEC_TICKETMASTER,   false, &ChatHandler::HandleGonameCommand,              "", nullptr },
         { "namego",         SEC_TICKETMASTER,   false, &ChatHandler::HandleNamegoCommand,              "", nullptr },
         { "group",          SEC_GAMEMASTER,     true, nullptr,                                         "", groupCommandTable },

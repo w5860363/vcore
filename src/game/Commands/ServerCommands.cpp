@@ -1926,3 +1926,23 @@ bool ChatHandler::HandleReloadAnticheatCommand(char*)
     SendSysMessage(">> Anticheat data reloaded");
     return true;
 }
+
+bool ChatHandler::HandleWorldCast(char* args)
+{
+
+    if (!*args)
+        return false;
+
+    if (m_session->GetPlayer()->GetMoney() < CONFIG_UINT32_WORLD_COST)
+    {
+        m_session->GetPlayer()->GetSession()->SendNotification(210009);
+        return false;
+    }
+
+    sWorld.SendWorldText(210008, m_session->GetPlayerName(), m_session->GetPlayerName(), args);
+
+    sLog.Out(LOG_BASIC, LOG_LVL_ERROR, "[World Chat] %s: %s", m_session->GetPlayerName(), args);
+    m_session->GetPlayer()->ModifyMoney(int32(-CONFIG_UINT32_WORLD_COST));
+    m_session->GetPlayer()->GetSession()->SendNotification(210010);
+    return true;
+}

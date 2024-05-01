@@ -627,6 +627,8 @@ void World::LoadConfigSettings(bool reload)
     setConfigMinMax(CONFIG_UINT32_START_PLAYER_MONEY, "StartPlayerMoney", 0, 0, MAX_MONEY_AMOUNT);
     setConfig(CONFIG_UINT32_MIN_HONOR_KILLS, "MinHonorKills", 0);
 
+    setConfig(CONFIG_UINT32_WORLD_COST, "WorldCost", 10000);
+
     // If min honor kills is at 0, decide based on patch.
     if (getConfig(CONFIG_UINT32_MIN_HONOR_KILLS) == 0)
     {
