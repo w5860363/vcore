@@ -2380,7 +2380,7 @@ Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, floa
     }
 
     uint32 const currentSummonCount = GetCreatureSummonCount();
-    if (currentSummonCount >= GetCreatureSummonLimit())
+    if (currentSummonCount >= GetCreatureSummonLimit() && IsControlledByPlayer())
     {
         sLog.Out(LOG_BASIC, LOG_LVL_MINIMAL, "WorldObject::SummonCreature: %s in (map %u, instance %u) attempted to summon Creature (Entry: %u), but already has %u active summons",
             GetGuidStr().c_str(), GetMapId(), GetInstanceId(), id, currentSummonCount);
