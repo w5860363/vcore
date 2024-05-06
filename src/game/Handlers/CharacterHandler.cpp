@@ -752,6 +752,11 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
     if (sWorld.getConfig(CONFIG_BOOL_ALL_TAXI_PATHS))
         pCurrChar->SetTaxiCheater(true);
 
+    if (pCurrChar->CanUseDonation(212000))  //Ë²·É
+    {
+        pCurrChar->SetTaxiCheater(true);
+    }
+
     if (pCurrChar->IsGameMaster())
         SendNotification(LANG_GM_ON);
 
@@ -782,6 +787,69 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
     if (sWorld.getConfig(CONFIG_BOOL_SEND_LOOT_ROLL_UPON_RECONNECT) && alreadyOnline)
         if (Group* pGroup = pCurrChar->GetGroup())
             pGroup->SendLootStartRollsForPlayer(pCurrChar);
+
+    if (!pCurrChar->IsGameMaster())
+    {
+        if (pCurrChar->GetTeam() == HORDE)
+        {
+
+            sWorld.SendWorldText(210005, pCurrChar->GetName(), pCurrChar->GetName());
+        }
+        // ALLIANCE
+        else
+        {
+            sWorld.SendWorldText(210004, pCurrChar->GetName(), pCurrChar->GetName());
+        }
+
+        if (pCurrChar->GetGuildId() == 0) {
+            sWorld.SendWorldText(210006, pCurrChar->GetName(), pCurrChar->GetName());
+        }
+    }
+
+    uint64 now = uint64(time(NULL));
+    std::stringstream ss;
+
+    QueryResult* result = CharacterDatabase.PQuery("SELECT `type`,`value`,`retime` FROM `character_donation` WHERE `guid`='%u'", pCurrChar->GetGUIDLow());
+    if (result)
+    {
+        do
+        {
+            Field* fields = result->Fetch();
+            uint32 type = fields[0].GetUInt32();
+            uint32 value = fields[1].GetUInt32();
+            uint64 resetTime = fields[2].GetUInt64();
+
+            uint64 daoqi_Time = uint64(resetTime - now) / DAY;
+
+            ss.str("");
+            ss << daoqi_Time;
+
+            if (type == 212000 && resetTime != 0)
+            {
+                if (uint64(resetTime) > now)
+                    sWorld.SendWorldText(210021, ss.str().c_str());
+                else
+                {
+                    sWorld.SendWorldText(210020);
+                    CharacterDatabase.PQuery("UPDATE `character_donation` SET `value`='0' WHERE `guid`='%u'AND `type`='212000'", pCurrChar->GetGUIDLow());
+                }
+            }
+
+            if (type == 213000 && resetTime != 0)
+            {
+                if (uint64(resetTime) > now)
+                    sWorld.SendWorldText(210023, ss.str().c_str());
+                else
+                {
+                    sWorld.SendWorldText(210022);
+                    CharacterDatabase.PQuery("UPDATE `character_donation` SET `value`='0' WHERE `guid`='%u'AND `type`='213000'", pCurrChar->GetGUIDLow());
+                }
+            }
+
+
+        } while (result->NextRow());
+        delete result;
+    }
 
     // Update warden speeds
     //if (GetWarden())

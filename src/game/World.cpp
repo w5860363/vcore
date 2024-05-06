@@ -628,6 +628,7 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_MIN_HONOR_KILLS, "MinHonorKills", 0);
 
     setConfig(CONFIG_UINT32_WORLD_COST, "WorldCost", 10000);
+    setConfig(CONFIG_DUAL_SPEC_TIME_DELTA, "DualSpecTimeDelta", 300); //˫�츳
 
     // If min honor kills is at 0, decide based on patch.
     if (getConfig(CONFIG_UINT32_MIN_HONOR_KILLS) == 0)

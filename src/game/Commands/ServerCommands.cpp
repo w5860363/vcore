@@ -41,6 +41,8 @@
 #include "SpellModMgr.h"
 #include "CreatureGroups.h"
 
+#pragma execution_character_set("utf-8")
+
 bool ChatHandler::HandleAnnounceCommand(char* args)
 {
     if (!*args)
@@ -1929,7 +1931,6 @@ bool ChatHandler::HandleReloadAnticheatCommand(char*)
 
 bool ChatHandler::HandleWorldCast(char* args)
 {
-
     if (!*args)
         return false;
 
@@ -1945,4 +1946,31 @@ bool ChatHandler::HandleWorldCast(char* args)
     m_session->GetPlayer()->ModifyMoney(int32(-CONFIG_UINT32_WORLD_COST));
     m_session->GetPlayer()->GetSession()->SendNotification(210010);
     return true;
+}
+
+bool ChatHandler::HandleTfSpec(char* /*args*/)
+{
+    if (m_session->GetPlayer()->CanUseDonation(213000))
+    {
+        uint32 res = m_session->GetPlayer()->SwapSpec();
+        switch (res) {
+        case 3: {
+            PSendSysMessage("CD中!");
+            break;
+        }
+        case 2: {
+            PSendSysMessage("等级不足");
+            break;
+        }
+        case 1: {
+            PSendSysMessage("切换!");
+            break;
+        }
+        }
+        return true;
+    }
+    else {
+        m_session->GetPlayer()->GetSession()->SendNotification(210012);
+    }
+    return false;
 }

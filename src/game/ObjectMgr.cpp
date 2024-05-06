@@ -8815,6 +8815,11 @@ void ObjectMgr::SetTaxiNodeEntry(uint32 nodeId, std::unique_ptr<TaxiNodesEntry> 
 	m_TaxiNodes[nodeId] = std::move(nodeEntry);
 }
 
+TaxiNodesEntry const* ObjectMgr::FindTaxiNodesEntry(uint32 nodeId)
+{
+    return m_TaxiNodes[nodeId].get();
+}
+
 void ObjectMgr::LoadTaxiPathTransitions()
 {
     m_TaxiPathTransitions.clear();                                            // need for reload case

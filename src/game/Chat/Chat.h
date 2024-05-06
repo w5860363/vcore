@@ -911,6 +911,9 @@ class ChatHandler
         bool HandleRecallCommand(char* args);
         bool HandleAnnounceCommand(char* args);
         bool HandleWorldCast(char* args); //世界聊天
+        bool HandleFly(char* args); //瞬飞开通
+        bool HandleSwapSpec(char* args); //双天赋开通
+        bool HandleTfSpec(char* args); //双天赋
         bool HandleNotifyCommand(char* args);
         bool HandleGPSCommand(char* args);
         bool HandleTaxiCheatCommand(char* args);
