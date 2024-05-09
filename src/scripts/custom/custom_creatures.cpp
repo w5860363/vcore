@@ -14,10 +14,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "scriptPCH.h"
+#include "ScriptMgr.h"
 #include "custom.h"
 #include "ScriptedAI.h"
 #include <ctime>
+#include "DBCStores.h"
+#include "World.h"
+
+#pragma execution_character_set("utf-8")
 
 // TELEPORT NPC
 
@@ -1149,6 +1153,62 @@ CreatureAI* GetAI_custom_summon_debug(Creature *creature)
     return new npc_summon_debugAI(creature);
 }
 
+bool GossipHello_TimeNPC(Player* player, Creature* _Creature)
+{
+    player->ADD_GOSSIP_ITEM(5, "领取双倍经验药水", GOSSIP_SENDER_MAIN, 1);
+    player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, _Creature->GetGUID());
+
+    return true;
+
+}
+bool GossipSelect_TimeNPC(Player* player, Creature* _Creature, uint32 sender, uint32 action)
+{
+    uint64 now = uint64(time(NULL));
+    std::stringstream ss;
+
+    QueryResult* result = CharacterDatabase.PQuery("SELECT `retime` FROM `character_time` WHERE `guid`='%u'", player->GetGUIDLow());
+    if (result)
+    {
+        do
+        {
+            Field* fields = result->Fetch();
+            uint64 resetTime = fields[0].GetUInt64();
+
+            uint64 daoqi_Time = uint64(uint64(resetTime + 86400) - now) / 60 + 1;
+
+            ss.str("");
+            ss << daoqi_Time;
+
+            if (action = 1 && resetTime != 0)
+            {
+                if (uint64(resetTime + 86400) > now)
+                {
+                    sWorld.SendWorldText(210024, ss.str().c_str()); //mangos_string编号
+                }
+                else
+                {
+                    CharacterDatabase.PExecute("REPLACE INTO `character_time` VALUES (%u, %u)", player->GetGUIDLow(), uint64(now));
+                    player->AddItem(40000, 1); //物品编号
+                    player->SaveToDB();
+                    player->CLOSE_GOSSIP_MENU();
+                }
+            }
+
+
+        } while (result->NextRow());
+        delete result;
+    }
+    else
+    {
+        CharacterDatabase.PExecute("REPLACE INTO `character_time` VALUES (%u, %u)", player->GetGUIDLow(), uint64(now));
+        player->AddItem(40000, 1);
+        player->SaveToDB();
+        player->CLOSE_GOSSIP_MENU();
+    }
+
+    return true;
+}
+
 void AddSC_custom_creatures()
 {
     Script* newscript;
@@ -1191,5 +1251,11 @@ void AddSC_custom_creatures()
     newscript = new Script;
     newscript->Name = "custom_npc_summon_debugAI";
     newscript->GetAI = &GetAI_custom_summon_debug;
+    newscript->RegisterSelf(false);
+
+    newscript = new Script;
+    newscript->Name = "custom_time_npc";
+    newscript->pGossipHello = &GossipHello_TimeNPC;
+    newscript->pGossipSelect = &GossipSelect_TimeNPC;
     newscript->RegisterSelf(false);
 }
