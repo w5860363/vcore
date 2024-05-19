@@ -1952,10 +1952,16 @@ bool ChatHandler::HandleTfSpec(char* /*args*/)
 {
     if (m_session->GetPlayer()->CanUseDonation(213000))
     {
+        if (m_session->GetPlayer()->IsInCombat())
+        {
+            PSendSysMessage("战斗中!");
+            return false;
+        }
+
         uint32 res = m_session->GetPlayer()->SwapSpec();
         switch (res) {
         case 3: {
-            PSendSysMessage("CD中!");
+            PSendSysMessage("尚在CD中!");
             break;
         }
         case 2: {

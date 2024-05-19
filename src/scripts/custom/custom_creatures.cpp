@@ -1153,60 +1153,418 @@ CreatureAI* GetAI_custom_summon_debug(Creature *creature)
     return new npc_summon_debugAI(creature);
 }
 
-bool GossipHello_TimeNPC(Player* player, Creature* _Creature)
+bool GossipHello_npc_codebox(Player* player, Creature* _Creature)
 {
-    player->ADD_GOSSIP_ITEM(5, "领取双倍经验药水", GOSSIP_SENDER_MAIN, 1);
+    player->ADD_GOSSIP_ITEM(5, 40000, GOSSIP_SENDER_MAIN, 1000);
+    player->ADD_GOSSIP_ITEM(5, 40001, GOSSIP_SENDER_MAIN, 2000);
+    player->ADD_GOSSIP_ITEM(5, 40002, GOSSIP_SENDER_MAIN, 4000);
     player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, _Creature->GetGUID());
-
     return true;
-
 }
-bool GossipSelect_TimeNPC(Player* player, Creature* _Creature, uint32 sender, uint32 action)
-{
-    uint64 now = uint64(time(NULL));
-    std::stringstream ss;
 
-    QueryResult* result = CharacterDatabase.PQuery("SELECT `retime` FROM `character_time` WHERE `guid`='%u'", player->GetGUIDLow());
+bool GossipSelect_npc_codebox(Player* player, Creature* _Creature, uint32 sender, uint32 action)
+{
+    if (sender != GOSSIP_SENDER_MAIN)
+        return true;
+
+    uint32 now = uint32(time(NULL));
+    uint32 accid = player->GetSession()->GetAccountId();
+
+    if (action == 1000)
+    {
+        player->PlayerTalkClass->ClearMenus();
+        if (QueryResult* t_query = WorldDatabase.PQuery("SELECT `id`, `name` FROM `_scpz` WHERE `id` <9"))
+        {
+            do
+            {
+                Field* t_fields = t_query->Fetch();
+                uint64 storeid = t_fields[0].GetUInt64();
+                char const* text = t_fields[1].GetString();
+                player->ADD_GOSSIP_ITEM(5, text, GOSSIP_SENDER_MAIN, storeid);
+
+            } while (t_query->NextRow());
+        }
+        player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, _Creature->GetGUID());
+    }
+    if (action == 2000)
+    {
+        if (QueryResult* t_query = WorldDatabase.PQuery("SELECT `id`, `name` FROM `_scpz` WHERE `id` >8"))
+        {
+            do
+            {
+                Field* t_fields = t_query->Fetch();
+                uint64 storeid = t_fields[0].GetUInt64();
+                char const* text = t_fields[1].GetString();
+                player->ADD_GOSSIP_ITEM(5, text, GOSSIP_SENDER_MAIN, storeid);
+
+            } while (t_query->NextRow());
+        }
+        player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, _Creature->GetGUID());
+    }
+
+    if (action == 4000)
+    {
+        QueryResult* result = CharacterDatabase.PQuery("SELECT `type`, `retime` FROM `character_donation` WHERE `guid`='%u'", player->GetGUIDLow());
+        if (result)
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                uint64 type = fields[0].GetUInt64();
+                uint64 retime = fields[1].GetUInt64();
+
+                uint32 now = uint32(time(NULL));
+                std::stringstream ss;
+                uint32 daoqi_Time = uint32(uint32(retime - now) / DAY) + 1;
+
+                if (type == 212000)
+                {
+                    ss << "飞行点瞬飞剩余" << daoqi_Time << "天";
+
+                    player->ADD_GOSSIP_ITEM(5, ss.str().c_str(), GOSSIP_SENDER_MAIN, 9997);
+                }
+                if (type == 213000)
+                {
+                    ss.clear();
+                    ss << "双天赋剩余" << daoqi_Time << "天";
+
+                    player->ADD_GOSSIP_ITEM(5, ss.str().c_str(), GOSSIP_SENDER_MAIN, 9998);
+                }
+
+            } while (result->NextRow());
+            delete result;
+        }
+        else
+            player->ADD_GOSSIP_ITEM(5, 40003, GOSSIP_SENDER_MAIN, 9999);
+        player->SEND_GOSSIP_MENU(DEFAULT_GOSSIP_MESSAGE, _Creature->GetGUID());
+    }
+
+    QueryResult* result = WorldDatabase.PQuery("SELECT `id`,  `level`, `itemid1`, `itemcount1`, `itemid2`, `itemcount2`, `itemid3`, `itemcount3` , `itemid4`, `itemcount4`, `itemid5`, `itemcount5`, `curry`, `day` FROM `_scpz` WHERE `id`='%u'", action);
     if (result)
     {
         do
         {
             Field* fields = result->Fetch();
-            uint64 resetTime = fields[0].GetUInt64();
+            uint64 storeid = fields[0].GetUInt64();
+            uint64 level = fields[1].GetUInt64();
+            uint64 itemid1 = fields[2].GetUInt64();
+            uint64 itemid1count = fields[3].GetUInt64();
+            uint64 itemid2 = fields[4].GetUInt64();
+            uint64 itemid2count = fields[5].GetUInt64();
+            uint64 itemid3 = fields[6].GetUInt64();
+            uint64 itemid3count = fields[7].GetUInt64();
+            uint64 itemid4 = fields[8].GetUInt64();
+            uint64 itemid4count = fields[9].GetUInt64();
+            uint64 itemid5 = fields[10].GetUInt64();
+            uint64 itemid5count = fields[11].GetUInt64();
+            uint64 zzds = fields[12].GetUInt64();
+            uint64 resetTime = fields[13].GetUInt64();
 
-            uint64 daoqi_Time = uint64(uint64(resetTime + 86400) - now) / 60 + 1;
-
-            ss.str("");
-            ss << daoqi_Time;
-
-            if (action = 1 && resetTime != 0)
+            if (result)
             {
-                if (uint64(resetTime + 86400) > now)
+                if (action == storeid && storeid < 9)
                 {
-                    sWorld.SendWorldText(210024, ss.str().c_str()); //mangos_string编号
-                }
-                else
-                {
-                    CharacterDatabase.PExecute("REPLACE INTO `character_time` VALUES (%u, %u)", player->GetGUIDLow(), uint64(now));
-                    player->AddItem(40000, 1); //物品编号
-                    player->SaveToDB();
-                    player->CLOSE_GOSSIP_MENU();
-                }
-            }
+                    if (level != 0 && player->GetLevel() < level)
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("等级不足");
+                        return false;
+                    }
+                    else if (itemid1 != 0 && !player->HasItemCount(itemid1, itemid1count, true))
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("所需物品不足");
+                        return false;
+                    }
+                    else if (itemid2 != 0 && !player->HasItemCount(itemid2, itemid2count, true))
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("所需物品不足");
+                        return false;
+                    }
+                    else if (itemid3 != 0 && !player->HasItemCount(itemid3, itemid3count, true))
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("所需物品不足");
+                        return false;
+                    }
+                    else if (itemid4 != 0 && !player->HasItemCount(itemid4, itemid4count, true))
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("所需物品不足");
+                        return false;
+                    }
+                    else if (itemid5 != 0 && !player->HasItemCount(itemid5, itemid5count, true))
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("所需物品不足");
+                        return false;
+                    }
+                    else if (zzds != 0)
+                    {
+                        QueryResult* result1 = CharacterDatabase.PQuery("SELECT `jf` FROM `_character_jf` WHERE `guid`=%u", player->GetGUIDLow());
 
+                        if (result1)
+                        {
+                            Field* fields = result1->Fetch();
+                            uint32 currentPoints = fields[0].GetUInt32();
+
+                            if (currentPoints >= zzds)
+                            {
+                                player->CLOSE_GOSSIP_MENU();
+                                player->GetSession()->SendNotification("扣除赞助点数%u", zzds);
+                                LoginDatabase.PQuery("UPDATE `_character_jf` SET `jf`=%u WHERE `guid`=%u", currentPoints - zzds, player->GetGUIDLow());
+                            }
+                            else
+                            {
+                                player->CLOSE_GOSSIP_MENU();
+                                player->GetSession()->SendNotification("赞助点数不足");
+                                return false;
+                            }
+                        }
+                    }
+                    player->DestroyItemCount(itemid1, itemid1count, true);
+                    player->DestroyItemCount(itemid2, itemid2count, true);
+                    player->DestroyItemCount(itemid3, itemid3count, true);
+                    player->DestroyItemCount(itemid4, itemid4count, true);
+                    player->DestroyItemCount(itemid4, itemid5count, true);
+                    QueryResult* result2 = CharacterDatabase.PQuery("SELECT retime FROM character_donation WHERE guid=%u", player->GetGUIDLow());
+                    if (result2)
+                    {
+                        Field* fields = result2->Fetch();
+                        uint32 retime2 = fields[0].GetUInt32();
+
+                        if (retime2 != 0)
+                        {
+                            player->CLOSE_GOSSIP_MENU();
+                            player->GetSession()->SendNotification("瞬飞开通成功");
+                            CharacterDatabase.PQuery("REPLACE INTO  `character_donation` (`guid`, `type`, `value`, `flags`, `retime`) VALUES(%u, 212000, 1, 0, %u)", player->GetGUIDLow(), retime2 + (resetTime * 86400));
+                        }
+                        else if (retime2 = 0)
+                        {
+                            player->CLOSE_GOSSIP_MENU();
+                            player->GetSession()->SendNotification("瞬飞开通成功");
+                            CharacterDatabase.PQuery("REPLACE INTO  `character_donation` (`guid`, `type`, `value`, `flags`, `retime`) VALUES(%u, 212000, 1, 0, %u)", player->GetGUIDLow(), now + (resetTime * 86400));
+                        }
+                    }
+                    else if (!result2)
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("瞬飞开通成功");
+                        CharacterDatabase.PQuery("REPLACE INTO  `character_donation` (`guid`, `type`, `value`, `flags`, `retime`) VALUES(%u, 212000, 1, 0, %u)", player->GetGUIDLow(), now + (resetTime * 86400));
+                    }
+                }
+                if (action == storeid && storeid > 8 && storeid < 17)
+                {
+                    if (level != 0 && player->GetLevel() < level)
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("等级不足");
+                        return false;
+                    }
+                    else if (itemid1 != 0 && !player->HasItemCount(itemid1, itemid1count, true))
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("所需物品不足");
+                        return false;
+                    }
+                    else if (itemid2 != 0 && !player->HasItemCount(itemid2, itemid2count, true))
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("所需物品不足");
+                        return false;
+                    }
+                    else if (itemid3 != 0 && !player->HasItemCount(itemid3, itemid3count, true))
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("所需物品不足");
+                        return false;
+                    }
+                    else if (itemid4 != 0 && !player->HasItemCount(itemid4, itemid4count, true))
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("所需物品不足");
+                        return false;
+                    }
+                    else if (itemid5 != 0 && !player->HasItemCount(itemid5, itemid5count, true))
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("所需物品不足");
+                        return false;
+                    }
+                    else if (zzds != 0)
+                    {
+                        QueryResult* result1 = LoginDatabase.PQuery("SELECT `jf` FROM `_character_jf` WHERE `guid`=%u", player->GetGUIDLow());
+
+                        if (result1)
+                        {
+                            Field* fields = result1->Fetch();
+                            uint32 currentPoints = fields[0].GetUInt32();
+
+                            if (currentPoints >= zzds)
+                            {
+                                player->CLOSE_GOSSIP_MENU();
+                                player->GetSession()->SendNotification("扣除赞助点数%u", zzds);
+                                LoginDatabase.PQuery("UPDATE `_character_jf` SET `jf=%u WHERE `guid`=%u", currentPoints - zzds, player->GetGUIDLow());
+                            }
+                            else
+                            {
+                                player->CLOSE_GOSSIP_MENU();
+                                player->GetSession()->SendNotification("赞助点数不足");
+                                return false;
+                            }
+                        }
+                    }
+                    player->DestroyItemCount(itemid1, itemid1count, true);
+                    player->DestroyItemCount(itemid2, itemid2count, true);
+                    player->DestroyItemCount(itemid3, itemid3count, true);
+                    player->DestroyItemCount(itemid4, itemid4count, true);
+                    player->DestroyItemCount(itemid4, itemid5count, true);
+                    QueryResult* result2 = CharacterDatabase.PQuery("SELECT retime FROM character_donation WHERE guid=%u", player->GetGUIDLow());
+                    if (result2)
+                    {
+                        Field* fields = result2->Fetch();
+                        uint32 retime2 = fields[0].GetUInt32();
+
+                        if (retime2 != 0)
+                        {
+                            player->CLOSE_GOSSIP_MENU();
+                            player->GetSession()->SendNotification("双天赋开通成功");
+                            CharacterDatabase.PQuery("REPLACE INTO  `character_donation` (`guid`, `type`, `value`, `flags`, `retime`) VALUES(%u, 213000, 1, 0, %u)", player->GetGUIDLow(), retime2 + (resetTime * 86400));
+                        }
+                        else if (retime2 = 0)
+                        {
+                            player->CLOSE_GOSSIP_MENU();
+                            player->GetSession()->SendNotification("双天赋开通成功");
+                            CharacterDatabase.PQuery("REPLACE INTO  `character_donation` (`guid`, `type`, `value`, `flags`, `retime`) VALUES(%u, 213000, 1, 0, %u)", player->GetGUIDLow(), now + (resetTime * 86400));
+                        }
+                    }
+                    else if (!result2)
+                    {
+                        player->CLOSE_GOSSIP_MENU();
+                        player->GetSession()->SendNotification("双天赋开通成功");
+                        CharacterDatabase.PQuery("REPLACE INTO  `character_donation` (`guid`, `type`, `value`, `flags`, `retime`) VALUES(%u, 213000, 1, 0, %u)", player->GetGUIDLow(), now + (resetTime * 86400));
+                    }
+                }
+
+            }
 
         } while (result->NextRow());
         delete result;
     }
-    else
-    {
-        CharacterDatabase.PExecute("REPLACE INTO `character_time` VALUES (%u, %u)", player->GetGUIDLow(), uint64(now));
-        player->AddItem(40000, 1);
-        player->SaveToDB();
-        player->CLOSE_GOSSIP_MENU();
-    }
 
     return true;
+}
+
+bool GossipHello_PandaNPC(Player* player, Creature* creature)
+{
+    if (player != creature->GetOwnerPlayer())
+    {
+        creature->MonsterSay("你不是我的主人!", LANG_UNIVERSAL, 0);
+        return false;
+    }
+
+    creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_BANKER);
+    player->GetSession()->SendShowBank(creature->GetGUID());
+
+    return true;
+}
+
+bool GossipHello_DeamNPC(Player* player, Creature* creature)
+{
+    if (player != creature->GetOwnerPlayer())
+    {
+        creature->MonsterSay("你不是我的主人!", LANG_UNIVERSAL, 0);
+        return false;
+    }
+
+    player->RemoveAurasDueToSpell(24425);
+    player->RemoveAurasDueToSpell(22888);
+    player->RemoveAurasDueToSpell(15366);
+    player->RemoveAurasDueToSpell(16609);
+    player->RemoveAurasDueToSpell(22818);
+    player->RemoveAurasDueToSpell(22817);
+    player->RemoveAurasDueToSpell(22820);
+    player->RemoveAurasDueToSpell(7594);
+
+    player->AddAura(24425);
+    player->AddAura(22888);
+    player->AddAura(15366);
+    player->AddAura(16609);
+    player->AddAura(22818);
+    player->AddAura(22817);
+    player->AddAura(22820);
+    player->AddAura(24425);
+
+    return true;
+}
+
+bool GossipHello_npc_code(Player* player, Creature* _Creature)
+{
+
+    player->ADD_GOSSIP_ITEM_EXTENDED(0, "CDK", GOSSIP_SENDER_MAIN, 1000, "", true);
+
+    player->PlayerTalkClass->SendGossipMenu(DEFAULT_GOSSIP_MESSAGE, _Creature->GetGUID());
+    return true;
+}
+
+bool GossipSelect_npc_code(Player* player, Creature* _Creature, uint32 sender, uint32 action)
+{
+    if (action != 1000)
+        player->CLOSE_GOSSIP_MENU();
+
+    return true;
+}
+
+bool GossipSelectWithCode_npc_code(Player* player, Creature* _Creature, uint32 sender, uint32 action, const char* sCode)
+{
+    if (sender == GOSSIP_SENDER_MAIN)
+    {
+        if (action == 1000)
+        {
+            if (QueryResult* t_query = WorldDatabase.PQuery("SELECT `code`, `amount` FROM `_cdk`"))
+            {
+                do
+                {
+                    Field* t_fields = t_query->Fetch();
+                    char const* code = t_fields[0].GetString();
+                    uint64 costid = t_fields[1].GetUInt64();
+
+                    if (std::strcmp(sCode, code) != 0)
+                    {
+                        _Creature->MonsterSay("充值卡不存在!", LANG_UNIVERSAL, 0);
+                        _Creature->CastSpell(player, 12826, true);
+                        return false;
+                    }
+                    else
+                    {
+                        QueryResult* result1 = LoginDatabase.PQuery("SELECT `jf` FROM `_character_jf` WHERE `guid`=%u", player->GetGUIDLow());
+
+                        if (result1)
+                        {
+                            Field* fields = result1->Fetch();
+                            uint32 currentPoints = fields[0].GetUInt32();
+
+                            player->GetSession()->SendNotification("充值赞助点数%u", costid);
+                            LoginDatabase.PQuery("UPDATE `_character_jf` SET `jf`=%u WHERE id=%u", currentPoints + costid, player->GetGUIDLow());
+                            WorldDatabase.PQuery("DELETE FROM `_cdk` where `code` = %s", sCode);
+                        }
+                        else
+                        {
+                            _Creature->MonsterSay("充值卡不存在!", LANG_UNIVERSAL, 0);
+                            _Creature->CastSpell(player, 12826, true);
+                            return false;
+                        }
+                    }
+
+                } while (t_query->NextRow());
+            }
+
+            player->CLOSE_GOSSIP_MENU();
+            return true;
+        }
+    }
+    return false;
 }
 
 void AddSC_custom_creatures()
@@ -1254,8 +1612,25 @@ void AddSC_custom_creatures()
     newscript->RegisterSelf(false);
 
     newscript = new Script;
-    newscript->Name = "custom_time_npc";
-    newscript->pGossipHello = &GossipHello_TimeNPC;
-    newscript->pGossipSelect = &GossipSelect_TimeNPC;
+    newscript->Name = "custom_stone_npc";
+    newscript->pGossipHello = &GossipHello_npc_codebox;
+    newscript->pGossipSelect = &GossipSelect_npc_codebox;
+    newscript->RegisterSelf(false);
+
+    newscript = new Script;
+    newscript->Name = "custom_panda_npc";
+    newscript->pGossipHello = &GossipHello_PandaNPC;
+    newscript->RegisterSelf(false);
+
+    newscript = new Script;
+    newscript->Name = "custom_deam_npc";
+    newscript->pGossipHello = &GossipHello_DeamNPC;
+    newscript->RegisterSelf(false);
+
+    newscript = new Script;
+    newscript->Name = "custom_npc_codebox";
+    newscript->pGossipHello = &GossipHello_npc_code;
+    newscript->pGossipSelect = &GossipSelect_npc_code;
+    newscript->pGossipSelectWithCode = &GossipSelectWithCode_npc_code;
     newscript->RegisterSelf(false);
 }

@@ -4922,6 +4922,18 @@ Creature* Unit::GetOwnerCreature() const
     return nullptr;
 }
 
+Player* Unit::GetOwnerPlayer() const
+{
+    if (!IsInWorld())
+        return nullptr;
+
+    if (ObjectGuid ownerid = GetOwnerGuid())
+        if (ownerid.IsPlayer())
+            return GetMap()->GetPlayer(ownerid);
+
+    return nullptr;
+}
+
 Unit* Unit::GetCharmer() const
 {
     if (ObjectGuid charmerid = GetCharmerGuid())

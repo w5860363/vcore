@@ -788,24 +788,6 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
         if (Group* pGroup = pCurrChar->GetGroup())
             pGroup->SendLootStartRollsForPlayer(pCurrChar);
 
-    if (!pCurrChar->IsGameMaster())
-    {
-        if (pCurrChar->GetTeam() == HORDE)
-        {
-
-            sWorld.SendWorldText(210005, pCurrChar->GetName(), pCurrChar->GetName());
-        }
-        // ALLIANCE
-        else
-        {
-            sWorld.SendWorldText(210004, pCurrChar->GetName(), pCurrChar->GetName());
-        }
-
-        if (pCurrChar->GetGuildId() == 0) {
-            sWorld.SendWorldText(210006, pCurrChar->GetName(), pCurrChar->GetName());
-        }
-    }
-
     uint64 now = uint64(time(NULL));
     std::stringstream ss;
 
@@ -819,7 +801,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
             uint32 value = fields[1].GetUInt32();
             uint64 resetTime = fields[2].GetUInt64();
 
-            uint64 daoqi_Time = uint64(resetTime - now) / DAY;
+            uint64 daoqi_Time = uint64(uint64(resetTime - now) / DAY)+1;
 
             ss.str("");
             ss << daoqi_Time;
